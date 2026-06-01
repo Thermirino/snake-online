@@ -2,6 +2,7 @@
 #define SNAKE_H
 
 #include <stddef.h>
+#include <color.h>
 
 typedef enum {
     DIR_UP,
@@ -11,7 +12,7 @@ typedef enum {
 } direction;
 
 typedef struct {
-    int x, y;
+    int y, x;
 } point;
 
 typedef struct {
@@ -23,6 +24,7 @@ typedef struct {
 typedef struct {
     direction dir;
     snake_body body;
+    color_name color;
 } snake;
 
 #endif

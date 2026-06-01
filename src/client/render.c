@@ -38,7 +38,6 @@ render_context* render_init(int win_width, int win_height)
 
     rs->colors.background = WHITE;
     rs->colors.grid = BLACK;
-    rs->colors.snake_body = GREEN;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -151,7 +150,7 @@ bool render_snake(render_context* rs, snake* s)
     if (!rs || !s)
         return false;
 
-    if (!set_color(rs, rs->colors.snake_body)) {
+    if (!set_color(rs, s->color)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
@@ -164,6 +163,18 @@ bool render_snake(render_context* rs, snake* s)
         if (SDL_RenderFillRect(rs->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
                     SDL_GetError());
+            return false;
+        }
+    }
+    return true;
+}
+
+bool render_snakes(render_context* rs, snake* snakes, size_t snakes_size)
+{
+    for (size_t i = 0; i < snakes_size; i++) {
+        snake* s = &snakes[i];
+        if (!render_snake(rs, s)) {
+            fprintf(stderr, "render_snake failed\n");
             return false;
         }
     }

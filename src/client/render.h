@@ -5,22 +5,11 @@
 #include <SDL.h>
 #include <SDL_ttf.h>
 #include <game.h>
-
-typedef enum {
-    WHITE = 0,
-    BLACK,
-    RED,
-    ORANGE,
-    YELLOW,
-    GREEN,
-    BLUE,
-    PURPLE
-} color_name;
+#include <color.h>
 
 typedef struct {
     color_name background;
     color_name grid;
-    color_name snake_body;
 } theme;
 
 typedef struct {
@@ -38,5 +27,6 @@ render_context* render_init(int win_width, int win_height);
 void render_destroy(render_context* rs);
 bool render_grid(render_context* rs, board* brd);
 bool render_snake(render_context* rs, snake* s);
+bool render_snakes(render_context* rs, snake* snakes, size_t snakes_size);
 
 #endif

@@ -10,7 +10,8 @@ typedef struct {
 typedef struct {
     board brd;
     snake* snakes;
-    int nsnakes;
+    size_t snakes_capacity;
+    size_t snakes_size;
 } game_state;
 
 #endif
