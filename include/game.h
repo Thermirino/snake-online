@@ -4,7 +4,7 @@
 #include <snake.h>
 
 typedef struct {
-    int width, height;
+    int width, height;      // in cells
 } board;
 
 typedef struct {

@@ -22,7 +22,7 @@ typedef struct {
 
 typedef struct {
     direction dir;
-    snake_body* body;
+    snake_body body;
 } snake;
 
 #endif
