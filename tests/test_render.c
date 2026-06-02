@@ -82,6 +82,41 @@ void test_render_snakes(void)
     render_destroy(rs);
 }
 
+void test_render_game(void)
+{
+    int w = 1024;
+    int h = 512;
+    board brd = { .width = 15, .height = 40 };
+    snake s1 = { .dir = DIR_LEFT,
+                 .body.points = (point[]){ {3, 3}, {4, 3}, {5, 3}, {5, 4}, {5,5}},
+                 .body.capacity = 5,
+                 .body.size = 5,
+                 .color = GREEN};
+    snake s2 = { .dir = DIR_LEFT,
+                 .body.points = (point[]){ {7, 1}, {7, 2}, {7, 3}},
+                 .body.capacity = 3,
+                 .body.size = 3,
+                 .color = PURPLE};
+    snake s3 = { .dir = DIR_LEFT,
+                 .body.points = (point[]){ {10, 5}, {10, 6}, {10, 7}, {10, 8}, {10, 9}, {11, 9}},
+                 .body.capacity = 6,
+                 .body.size = 6,
+                 .color = ORANGE};
+    snake snakes[] = { s1, s2, s3 };
+    game_state gs = {
+        .brd = brd,
+        .snakes = snakes,
+        .snakes_capacity = 3,
+        .snakes_size = 3
+    };
+
+    render_context* rs = render_init(w, h);
+    TEST_ASSERT_NOT_NULL(rs);
+    TEST_ASSERT_TRUE(render_game(rs, &gs));
+    poll_events(rs->renderer);
+    render_destroy(rs);
+}
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -97,6 +132,7 @@ int main(int argc, char** argv)
     RUN_TEST(test_render_grid);
     RUN_TEST(test_render_snake);
     RUN_TEST(test_render_snakes);
+    RUN_TEST(test_render_game);
     return UNITY_END();
 }
 

@@ -120,7 +120,7 @@ static bool set_color(render_context* rs, color_name cname)
     return true;
 }
 
-bool render_grid(render_context* rs, board* brd)
+bool render_grid(render_context* rs, const board* brd)
 {
     if (!rs || !brd)
         return false;
@@ -145,7 +145,7 @@ bool render_grid(render_context* rs, board* brd)
     return true;
 }
 
-bool render_snake(render_context* rs, snake* s)
+bool render_snake(render_context* rs, const snake* s)
 {
     if (!rs || !s)
         return false;
@@ -169,14 +169,27 @@ bool render_snake(render_context* rs, snake* s)
     return true;
 }
 
-bool render_snakes(render_context* rs, snake* snakes, size_t snakes_size)
+bool render_snakes(render_context* rs, const snake* snakes, size_t snakes_size)
 {
     for (size_t i = 0; i < snakes_size; i++) {
-        snake* s = &snakes[i];
+        const snake* s = &snakes[i];
         if (!render_snake(rs, s)) {
             fprintf(stderr, "render_snake failed\n");
             return false;
         }
+    }
+    return true;
+}
+
+bool render_game(render_context* rs, const game_state* gs)
+{
+    if (!render_snakes(rs, gs->snakes, gs->snakes_size)) {
+        fprintf(stderr, "render_snakes failed\n");
+        return false;
+    }
+    if (!render_grid(rs, &gs->brd)) {
+        fprintf(stderr, "render_grid failed\n");
+        return false;
     }
     return true;
 }
