@@ -2,10 +2,11 @@
 #define SNAKE_H
 
 #include <stddef.h>
+#include <stdbool.h>
 #include <color.h>
 
 typedef enum {
-    DIR_UP,
+    DIR_UP = 0,
     DIR_RIGHT,
     DIR_DOWN,
     DIR_LEFT
@@ -26,5 +27,10 @@ typedef struct {
     snake_body body;
     color_name color;
 } snake;
+
+bool snake_init(snake* s, direction dir, int y, int x, color_name color);
+void snake_destroy(snake* s);
+bool snake_move(snake* s);
+bool snake_change_direction(snake* s, direction dir);
 
 #endif
