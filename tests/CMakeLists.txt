@@ -11,3 +11,8 @@ add_custom_command(TARGET test_render POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_SOURCE_DIR}/assets ${CMAKE_BINARY_DIR}/tests/assets)
 
 add_test(NAME test_render COMMAND test_render)
+
+add_executable(test_snake test_snake.c)
+target_link_libraries(test_snake PRIVATE unity snake_common)
+target_include_directories(test_snake PRIVATE ${PROJECT_SOURCE_DIR}/src/client) 
+add_test(NAME test_snake COMMAND test_snake)

@@ -98,14 +98,23 @@ endif()
 # SDL2_ttf
 find_package(SDL2_ttf CONFIG REQUIRED)
 
+# snake_common
+add_library(snake_common STATIC
+                            src/common/game.c
+                            src/common/snake.c)
+target_include_directories(snake_common
+                                PUBLIC include)
+
 # snake_client
-add_library(snake_client STATIC src/client/render.c)
+add_library(snake_client STATIC 
+                            src/client/render.c)
 target_include_directories(snake_client 
                                 PUBLIC include
                                 PRIVATE src/client)
 target_link_libraries(snake_client PUBLIC 
                                         SDL2::SDL2 
-                                        SDL2_ttf::SDL2_ttf)
+                                        SDL2_ttf::SDL2_ttf
+                                        snake_common)
 
 if ($ENV{CMAKE_EXPORT_COMPILE_COMMANDS})
     execute_process(
