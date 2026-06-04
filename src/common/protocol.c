@@ -184,6 +184,10 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
         return false;
     }
     *ptype = be32toh(phdr.type);
+    if (*ptype < 0 || *ptype > 2) {
+        fprintf(stderr, "Invalid packet type (%d)\n", *ptype);
+        return false;
+    }
     size_t packet_size = be64toh(phdr.size);
 
     *payload_size = packet_size - sizeof(phdr);
@@ -203,7 +207,8 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
             fprintf(stderr, "Received insufficient data\n");
             return false;
         }
-    }
+    } else
+        *payload = NULL;
     return true;
 }
 
