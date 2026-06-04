@@ -17,5 +17,6 @@ typedef struct {
 
 bool game_state_init(game_state* gs, int width, int height);
 void game_state_destroy(game_state* gs);
+bool game_state_add_snake(game_state* gs, snake* s);
 
 #endif
