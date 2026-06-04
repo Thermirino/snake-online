@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include <game.h>
 
 typedef enum {
@@ -15,9 +16,6 @@ typedef struct {
     uint64_t size;
     uint32_t type;
 } packet_header;
-
-typedef struct {
-} packet_connect;
 
 typedef struct {
     direction dir;
@@ -40,5 +38,7 @@ typedef struct {
 
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size);
 bool game_state_deserialize(uint8_t* data, game_state* gs);
+ssize_t recv_all(int fd, void* usrbuf, size_t n);
+ssize_t send_all(int fd, const void* usrbuf, size_t n);
 
 #endif
