@@ -168,3 +168,68 @@ ssize_t send_all(int fd, const void* usrbuf, size_t n)
     return n;
 
 }
+
+bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size)
+{
+    if (!ptype || !payload || !payload_size)
+        return false;
+
+    packet_header phdr;
+    ssize_t nbytes = recv_all(fd, &phdr, sizeof(phdr));
+    if (nbytes < 0) {
+        perror("recv_all");
+        return false;
+    } else if (nbytes != sizeof(phdr)) {
+        fprintf(stderr, "Received insufficient data\n");
+        return false;
+    }
+    *ptype = be32toh(phdr.type);
+    size_t packet_size = be64toh(phdr.size);
+
+    *payload_size = packet_size - sizeof(phdr);
+    if (*payload_size != 0) {
+        *payload = malloc(*payload_size);
+        if (!*payload) {
+            perror("malloc");
+            return false;
+        }
+        nbytes = recv_all(fd, *payload, *payload_size);
+        if (nbytes < 0) {
+            free(*payload);
+            perror("recv_all");
+            return false;
+        } else if ((size_t)nbytes != *payload_size) {
+            free(*payload);
+            fprintf(stderr, "Received insufficient data\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool send_packet(int fd, packet_type type, const void* payload, size_t payload_size)
+{
+    packet_header phdr;
+    phdr.size = htobe64(sizeof(phdr) + payload_size);
+    phdr.type = htobe32(type);
+    ssize_t nbytes = send_all(fd, &phdr, sizeof(phdr));
+    if (nbytes < 0) {
+        perror("send_all");
+        return false;
+    } else if (nbytes != sizeof(phdr)) {
+        fprintf(stderr, "send_all error\n");
+        return false;
+    }
+
+    if (payload_size != 0) {
+        nbytes = send_all(fd, payload, payload_size);
+        if (nbytes < 0) {
+            perror("send_all");
+            return false;
+        } else if ((size_t)nbytes != payload_size) {
+            fprintf(stderr, "send_all error\n");
+            return false;
+        }
+    }
+    return true;
+}

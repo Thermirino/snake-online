@@ -13,7 +13,7 @@ typedef enum {
 } packet_type;
 
 typedef struct {
-    uint64_t size;
+    uint64_t size;          // packet size
     uint32_t type;
 } packet_header;
 
@@ -38,6 +38,8 @@ typedef struct {
 
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size);
 bool game_state_deserialize(uint8_t* data, game_state* gs);
+bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size);
+bool send_packet(int fd, packet_type type, const void* payload, size_t payload_size);
 ssize_t recv_all(int fd, void* usrbuf, size_t n);
 ssize_t send_all(int fd, const void* usrbuf, size_t n);
 
