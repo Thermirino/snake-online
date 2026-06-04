@@ -2,10 +2,14 @@
 #include <stdlib.h>
 #include <snake.h>
 
-bool snake_init(snake* s, direction dir, int y, int x, color_name color)
+bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color)
 {
     if (!s)
         return false;
+
+    if (id < 0)
+        return false;
+    s->id = id;
 
     if (dir < 0 || dir > 3) {
         fprintf(stderr, "Invalid direction value: %d\n", s->dir);

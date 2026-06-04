@@ -7,7 +7,7 @@
 #include <game.h>
 
 typedef enum {
-    PT_CONNECT, 
+    PT_CONNECT = 0, 
     PT_INPUT, 
     PT_GAME_STATE,
 } packet_type;
@@ -27,6 +27,7 @@ typedef struct {
 } game_state_header;
 
 typedef struct {
+    uint32_t id;
     uint32_t dir;
     uint32_t color;
     uint64_t npoints;
