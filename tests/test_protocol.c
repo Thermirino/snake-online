@@ -8,6 +8,14 @@
 #include <crtdbg.h>
 #endif
 
+static void snake_is_equal(snake* s1, snake* s2)
+{
+    TEST_ASSERT_EQUAL(s1->dir, s2->dir);
+    TEST_ASSERT_EQUAL(s1->body.size, s2->body.size);
+    TEST_ASSERT_EQUAL(0, memcmp(s1->body.points, s2->body.points, s1->body.size * sizeof(point)));
+    TEST_ASSERT_EQUAL(s1->color, s2->color);
+}
+
 static void test_serialize(void)
 {
     game_state gs;
@@ -19,17 +27,46 @@ static void test_serialize(void)
 
     TEST_ASSERT_TRUE(game_state_init(&gs, width, height));
     TEST_ASSERT_TRUE(game_state_serialize(&gs, &buf, &size));
-    game_state_destroy(&gs);
 
     game_state gs2;
-    memset(&gs2, 0, sizeof(gs));
+    memset(&gs2, 0, sizeof(gs2));
     TEST_ASSERT_TRUE(game_state_deserialize(buf, &gs2));
-    TEST_ASSERT_EQUAL(width, gs2.brd.width);
-    TEST_ASSERT_EQUAL(height, gs2.brd.height);
+    TEST_ASSERT_EQUAL(gs.brd.width, gs2.brd.width);
+    TEST_ASSERT_EQUAL(gs.brd.height, gs2.brd.height);
     TEST_ASSERT_EQUAL(0, gs2.snakes_capacity);
     TEST_ASSERT_EQUAL(0, gs2.snakes_size);
     TEST_ASSERT_EQUAL(0, memcmp(&gs, &gs2, sizeof(gs)));
+    game_state_destroy(&gs2);
     free(buf);
+
+
+    // add 2 snakes
+    snake s1;
+    int y = 5, x = 8;
+    color_name color = GREEN;
+    TEST_ASSERT_TRUE(snake_init(&s1, DIR_UP, y, x, color));
+    TEST_ASSERT(game_state_add_snake(&gs, &s1));
+    snake s2;
+    y = 3, x = 4;
+    color = RED;
+    TEST_ASSERT_TRUE(snake_init(&s2, DIR_UP, y, x, color));
+    TEST_ASSERT(game_state_add_snake(&gs, &s2));
+
+    TEST_ASSERT_TRUE(game_state_serialize(&gs, &buf, &size));
+    memset(&gs2, 0, sizeof(gs2));
+    TEST_ASSERT_TRUE(game_state_deserialize(buf, &gs2));
+    TEST_ASSERT_EQUAL(gs.brd.width, gs2.brd.width);
+    TEST_ASSERT_EQUAL(gs.brd.height, gs2.brd.height);
+    TEST_ASSERT_GREATER_OR_EQUAL(2, gs2.snakes_capacity);
+    TEST_ASSERT_EQUAL(gs.snakes_size, gs2.snakes_size);
+    for (size_t i = 0; i < gs2.snakes_size; i++) {
+        snake_is_equal(&gs.snakes[i], &gs2.snakes[i]);
+    }
+    TEST_ASSERT_EQUAL(0, memcmp(&gs, &gs2, sizeof(gs)));
+    game_state_destroy(&gs2);
+    free(buf);
+
+    game_state_destroy(&gs);
 }
 
 void setUp(void) {}
