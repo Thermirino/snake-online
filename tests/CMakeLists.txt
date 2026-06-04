@@ -16,3 +16,11 @@ add_executable(test_snake test_snake.c)
 target_link_libraries(test_snake PRIVATE unity snake_common)
 target_include_directories(test_snake PRIVATE ${PROJECT_SOURCE_DIR}/src/client) 
 add_test(NAME test_snake COMMAND test_snake)
+
+add_executable(test_game test_game.c)
+target_link_libraries(test_game PRIVATE unity snake_common)
+add_test(NAME test_game COMMAND test_game)
+
+add_executable(test_protocol test_protocol.c)
+target_link_libraries(test_protocol PRIVATE unity snake_common)
+add_test(NAME test_protocol COMMAND test_protocol)

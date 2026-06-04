@@ -1,13 +1,20 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
-#include <snake.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <game.h>
 
 typedef enum {
     PT_CONNECT, 
     PT_INPUT, 
     PT_GAME_STATE,
 } packet_type;
+
+typedef struct {
+    uint64_t size;
+    uint32_t type;
+} packet_header;
 
 typedef struct {
 } packet_connect;
@@ -17,15 +24,21 @@ typedef struct {
 } packet_input;
 
 typedef struct {
-} packet_game_state;
+    int32_t width, height;
+    uint64_t nsnakes;
+} game_state_header;
 
 typedef struct {
-    packet_type type;
-    union {
-        packet_connect conn;
-        packet_input input;
-        packet_game_state gs;
-    };
-} packet;
+    uint32_t dir;
+    uint32_t color;
+    uint64_t npoints;
+} snake_header;
+
+typedef struct {
+    int32_t y, x;
+} point_data;
+
+bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size);
+bool game_state_deserialize(uint8_t* data, game_state* gs);
 
 #endif
