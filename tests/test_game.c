@@ -1,3 +1,4 @@
+#include "snake.h"
 #include <string.h>
 #include <unity.h>
 #include <game.h>
@@ -60,6 +61,37 @@ static void test_game_state(void)
     game_state_destroy(&gs);
 }
 
+static void test_game_check_collision(void)
+{
+    game_state gs;
+    int width = 20;
+    int height = 15;
+
+    TEST_ASSERT_TRUE(game_state_init(&gs, width, height));
+    TEST_ASSERT_FALSE(game_check_collision(NULL, (point){.y = 0, .x = 0}));
+
+    snake s1;
+    uint32_t id1 = 1;
+    int y = 2, x = 1;
+    color_name color = GREEN;
+    TEST_ASSERT_TRUE(snake_init(&s1, id1, DIR_UP, y, x, color));
+    TEST_ASSERT_FALSE(game_check_collision(&gs, s1.body.points[0]));
+    TEST_ASSERT_TRUE(game_state_add_snake(&gs, &s1));
+    TEST_ASSERT_TRUE(game_check_collision(&gs, s1.body.points[0]));
+    TEST_ASSERT_FALSE(game_check_collision(&gs, (point){.y = 2, .x = 2}));
+
+    snake s2;
+    uint32_t id2 = 2;
+    y = 2, x = 2;
+    color = RED;
+    TEST_ASSERT_TRUE(snake_init(&s2, id2, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(game_state_add_snake(&gs, &s2));
+    TEST_ASSERT_TRUE(game_check_collision(&gs, (point){.y = 2, .x = 1}));
+    TEST_ASSERT_TRUE(game_check_collision(&gs, (point){.y = 2, .x = 2}));
+    TEST_ASSERT_FALSE(game_check_collision(&gs, (point){.y = 2, .x = 3}));
+    game_state_destroy(&gs);
+}
+
 void setUp(void) {}
 void tearDown(void) {}
 
@@ -73,6 +105,7 @@ int main(int argc, char** argv)
     (void)argv;
     UNITY_BEGIN();
     RUN_TEST(test_game_state);
+    RUN_TEST(test_game_check_collision);
     return UNITY_END();
 }
 
