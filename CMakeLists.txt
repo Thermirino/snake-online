@@ -117,6 +117,19 @@ target_link_libraries(snake_client PUBLIC
                                         SDL2_ttf::SDL2_ttf
                                         snake_common)
 
+#snake_server
+add_library(snake_server STATIC
+                            src/server/server.c)
+target_include_directories(snake_server 
+                                PUBLIC include
+                                PRIVATE src/server)
+target_link_libraries(snake_server PUBLIC
+                                        snake_common)
+
+add_executable(server src/server/main.c)
+target_link_libraries(server PRIVATE
+                                        snake_server)
+
 if ($ENV{CMAKE_EXPORT_COMPILE_COMMANDS})
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E create_symlink
