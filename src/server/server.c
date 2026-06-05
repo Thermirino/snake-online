@@ -6,7 +6,10 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <poll.h>
-#include "server.h"
+#include <server.h>
+#include "game.h"
+#include "server_internal.h"
+#include "protocol.h"
 
 static int open_listenfd(const char* port)
 {
@@ -79,39 +82,120 @@ static bool add_client(server_state* state, int clientfd)
         return false;
     }
     state->clients[state->nclients].fd = clientfd;
+    state->clients[state->nclients].status = CLIENT_CONNECTING;
+    state->clients[state->nclients].snake_id = -1;
     state->nclients++;
     return true;
 }
 
-static bool process_clients(server_state* state,
-                            struct pollfd* pfds, 
-                            int nready)
+static bool accept_connections(server_state* state, struct pollfd* pfds)
 {
-    for (size_t i = 1; i < state->nclients - 1 && nready > 0; i++) {
-        if (pfds[i].revents & POLLIN) {
-            // process_client
-            nready--;
+    if (pfds[0].revents & POLLIN) {
+        struct sockaddr_storage addr;
+        socklen_t addr_len = sizeof(struct sockaddr_storage);
+        int connfd = accept(pfds[0].fd, (struct sockaddr*)&addr, &addr_len);
+        if (connfd == -1) {
+            perror("accept");
+            return false;
+        }
+        if (!add_client(state, connfd)) {
+            return false;
+        }
+
+        char host[NI_MAXHOST];
+        char serv[NI_MAXSERV];
+        int flags = NI_NUMERICHOST | NI_NUMERICSERV;
+        int rc = getnameinfo((struct sockaddr*)&addr, addr_len, 
+                host, sizeof(host), 
+                serv, sizeof(serv), 
+                flags);
+        if (rc) {
+            fprintf(stderr, "getnameinfo: %s\n", gai_strerror(rc));
+            return false;
+        }
+        printf("Client connected (%s:%s)\n", host, serv);
+    }
+    return true;
+}
+
+static bool handle_packet(server_state* state, 
+                          client* client,
+                          packet_type ptype,
+                          void* payload,
+                          size_t payload_size)
+{
+    (void)payload_size;
+    if (client->status == CLIENT_CONNECTING &&
+        ptype != PT_CONNECT) {
+        printf("The client is not connected (fd = %d)\n",
+                client->fd);
+        free(payload);
+        return false;
+    }
+
+    switch (ptype) {
+        case PT_CONNECT:
+            printf("Received a CONNECT packet from client (fd=%d)\n",
+                    client->fd);
+            client->status = CLIENT_CONNECTED;
+            game_add_player_snake(state->gs, uint32_t snake_id, color_name color);
+            break;
+        case PT_INPUT:
+            break;
+        case PT_GAME_STATE:
+            break;
+        default:
+            fprintf(stderr, "Invalid packet type (%d)\n",
+                    ptype);
+            free(payload);
+            return false;
+    }
+    return true;
+}
+
+static bool process_client(server_state* state, client* client, struct pollfd* pfd)
+{
+    bool ret = true;
+    if (pfd->revents & POLLIN) {
+        packet_type ptype;
+        void* payload;
+        size_t payload_size;
+        if (!recv_packet(pfd->fd, &ptype, 
+                         &payload, &payload_size)) {
+            fprintf(stderr, "recv_packet failed\n");
+            return false;
+        }
+        if (!handle_packet(state, client,
+                           ptype, payload, payload_size)) {
+            fprintf(stderr, "handle_packet failed\n");
+            ret = false;
+        }
+        free(payload);
+    }
+    return ret;
+}
+
+static bool process_clients(server_state* state,
+                            struct pollfd* pfds)
+{
+    for (size_t i = 0; i < state->nclients; i++) {
+        if (pfds[i + 1].revents & POLLIN) {
+            if (!process_client(state, &state->clients[i], &pfds[i + 1])) {
+                fprintf(stderr, "process client (fd = %d) failed\n", pfds[i].fd);
+            }
         }
     }
     return true;
 }
 
-int main(int argc, char* argv[])
+bool server_run(const char* port, int width, int height)
 {
-    /* board size */
-    int width = 30;
-    int height = 20;
-
-    if (argc != 2) {
-        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-        return -1;
-    }
-
     server_state state;
-    if (!server_state_init(&state, argv[1], width, height)) {
+    if (!server_state_init(&state, port, width, height)) {
         fprintf(stderr, "server_state_init failed\n");
-        return -1;
+        return false;
     }
+    printf("Server is running on port: %s\n", port);
 
     struct pollfd pfds[MAX_CLIENTS + 1];
     int nready;
@@ -127,41 +211,19 @@ int main(int argc, char* argv[])
         nready = poll(pfds, state.nclients + 1, timeout);
         if (nready == -1) {
             perror("poll");
-            return -1;
+            return false;
         }
 
-        if (pfds[0].revents != 0) {
-            if (pfds[0].revents & POLLIN) {
-                struct sockaddr_storage addr;
-                socklen_t addr_len = sizeof(struct sockaddr_storage);
-                int connfd = accept(pfds[0].fd, (struct sockaddr*)&addr, &addr_len);
-                if (connfd == -1) {
-                    perror("accept");
-                    return -1;
-                }
-
-                char host[NI_MAXHOST];
-                char serv[NI_MAXSERV];
-                int flags = NI_NUMERICHOST | NI_NUMERICSERV;
-                int rc = getnameinfo((struct sockaddr*)&addr, addr_len, 
-                                     host, sizeof(host), 
-                                     serv, sizeof(serv), 
-                                     flags);
-                if (rc) {
-                    fprintf(stderr, "getnameinfo: %s\n", gai_strerror(rc));
-                    return -1;
-                }
-                printf("Client connected (%s:%s)\n", host, serv);
-
-                if (!add_client(&state, connfd)) {
-                    return -1;
-                }
-            }
-            nready--;
+        if (!accept_connections(&state, pfds)) {
+            fprintf(stderr, "accept_connections failed\n");
+            return false;
         }
-        process_clients(pfds, state.nclients + 1, nready);
-
+        if (!process_clients(&state, pfds)) {
+            fprintf(stderr, "process_clients failed\n");
+            return false;
+        }
     }
 
     server_state_destroy(&state);
+    return true;
 }
