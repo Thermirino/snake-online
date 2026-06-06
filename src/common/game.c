@@ -118,3 +118,14 @@ bool game_add_player_snake(game_state* gs, uint32_t* snake_id)
     
     return true;
 }
+
+snake* game_find_snake(game_state* gs, uint32_t snake_id)
+{
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        snake* s = &gs->snakes[i];
+        if (s->id == snake_id) {
+            return s;
+        }
+    }
+    return NULL;
+}
