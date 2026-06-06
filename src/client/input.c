@@ -1,0 +1,51 @@
+#include <SDL.h>
+#include <SDL_events.h>
+#include <protocol.h>
+#include "input.h"
+#include "snake.h"
+
+bool process_input(client_state* state, bool* quit)
+{
+    if (!state || !quit)
+        return false;
+
+    *quit = false;
+    SDL_Event event;
+    bool change_direction = false;
+    direction dir;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+            case SDL_QUIT:
+                *quit = true;
+                break;
+            case SDL_KEYDOWN:
+                if (event.key.keysym.sym == SDLK_UP) {
+                    dir = DIR_UP;
+                    change_direction = true;
+                }
+                else if (event.key.keysym.sym == SDLK_DOWN) {
+                    dir = DIR_DOWN;
+                    change_direction = true;
+                }
+                else if (event.key.keysym.sym == SDLK_RIGHT) {
+                    dir = DIR_RIGHT;
+                    change_direction = true;
+                }
+                else if (event.key.keysym.sym == SDLK_LEFT) {
+                    dir = DIR_LEFT;
+                    change_direction = true;
+                }
+        }
+    }
+
+    if (change_direction) {
+        input_payload input;
+        input.dir = htobe32(dir);
+        if (!send_packet(state->sockfd, PT_INPUT, &input, sizeof(input))) {
+            fprintf(stderr, "send_packet failed\n");
+            return false;
+        }
+    }
+
+    return true;
+}
