@@ -157,7 +157,9 @@ static bool handle_packet(server_state* state,
                 return false;
             }
             break;
-        case PT_INPUT: ;
+
+        case PT_INPUT:
+            ;
             packet_input* input = payload;
             if (!game_change_snake_direction(&state->gs, client->snake_id, htobe32(input->dir))) {
                     fprintf(stderr, "game_change_snake_direction failed\n");

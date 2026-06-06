@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include "network.h"
@@ -81,5 +82,66 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
     state->snake_id = be32toh(ack->snake_id);
     free(payload);
 
+    return true;
+}
+
+static bool handle_packet(client_state* state,
+                          packet_type ptype,
+                          void* payload,
+                          size_t payload_size)
+{
+    switch (ptype) {
+        case PT_GAME_STATE:
+            ;
+            game_state new_gs;
+            if (!game_state_deserialize(payload, payload_size, &new_gs)) {
+                fprintf(stderr, "game_state deserialize failed\n");
+                return false;
+            }
+
+            game_state_destroy(&state->gs);
+            state->gs = new_gs;
+
+            break;
+        default:
+            fprintf(stderr, "Invalid packet type (%d)\n",
+                    ptype);
+            return false;
+    }
+    return true;
+}
+
+bool receive_server_packets(client_state* state)
+{
+    struct pollfd pfd;
+    pfd.fd = state->sockfd;
+    pfd.events = POLLIN;
+
+    int rc;
+    int timeout = 0;
+    while ((rc = poll(&pfd, 1, timeout)) == 1) {
+        packet_type ptype;
+        void* payload;
+        size_t payload_size;
+
+        if (!recv_packet(state->sockfd, &ptype, &payload, &payload_size)) {
+            fprintf(stderr, "recv_packet failed\n");
+            return false;
+        }
+
+        if (!handle_packet(state, ptype, payload, payload_size)) {
+            fprintf(stderr, "handle_packet failed\n");
+            free(payload);
+            return false;
+        }
+        free(payload);
+    }
+
+
+    if (rc < 0) {
+        perror("poll");
+        return false;
+    }
+    
     return true;
 }
