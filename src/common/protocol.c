@@ -6,6 +6,10 @@
 #include <protocol.h>
 #include <string.h>
 
+/* static functions */
+static ssize_t recv_all(int fd, void* usrbuf, size_t n);
+static ssize_t send_all(int fd, const void* usrbuf, size_t n);
+
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
 {
     if (!gs || !buf || !size)
@@ -146,7 +150,7 @@ bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
     return true;
 }
 
-ssize_t recv_all(int fd, void* usrbuf, size_t n)
+static ssize_t recv_all(int fd, void* usrbuf, size_t n)
 {
     size_t nleft = n;
     ssize_t nread;
@@ -167,7 +171,7 @@ ssize_t recv_all(int fd, void* usrbuf, size_t n)
     return n - nleft;
 }
 
-ssize_t send_all(int fd, const void* usrbuf, size_t n)
+static ssize_t send_all(int fd, const void* usrbuf, size_t n)
 {
     size_t nleft = n;
     ssize_t nwritten;
