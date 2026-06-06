@@ -207,6 +207,26 @@ static bool process_clients(server_state* state,
     return true;
 }
 
+static bool broadcast_game_state(server_state* state)
+{
+    uint8_t* payload;
+    size_t size;
+    if (!game_state_serialize(&state->gs, &payload, &size)) {
+        fprintf(stderr, "game_state_serialize failed\n");
+        return false;
+    }
+    for (size_t i = 0; i < state->nclients; i++) {
+        client* cl = &state->clients[i];
+        if (!send_packet(cl->fd, PT_GAME_STATE, payload, size)) {
+            fprintf(stderr, "send_packet failed (fd = %d)\n", cl->fd);
+            free(payload);
+            return false;
+        }
+    }
+    free(payload);
+    return true;
+}
+
 bool server_run(const char* port, int width, int height)
 {
     server_state state;
@@ -243,6 +263,10 @@ bool server_run(const char* port, int width, int height)
         }
         if (!game_update(&state.gs)) {
             fprintf(stderr, "game_update failed\n");
+            return false;
+        }
+        if (!broadcast_game_state(&state)) {
+            fprintf(stderr, "broadcast_game_state failed\n");
             return false;
         }
     }
