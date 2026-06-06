@@ -137,12 +137,13 @@ static bool handle_packet(server_state* state,
         case PT_CONNECT:
             printf("Received a CONNECT packet from client (fd=%d)\n",
                     client->fd);
-            client->status = CLIENT_CONNECTED;
+
             uint32_t snake_id;
             if (!game_add_player_snake(&state->gs, &snake_id)) {
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }
+
             client->snake_id = snake_id;
             client->status = CLIENT_CONNECTED;
 
@@ -156,14 +157,18 @@ static bool handle_packet(server_state* state,
                 return false;
             }
             break;
-        case PT_INPUT:
+        case PT_INPUT: ;
+            packet_input* input = payload;
+            if (!game_change_snake_direction(&state->gs, client->snake_id, htobe32(input->dir))) {
+                    fprintf(stderr, "game_change_snake_direction failed\n");
+                    return false;
+            }
             break;
         case PT_GAME_STATE:
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",
                     ptype);
-            free(payload);
             return false;
     }
     return true;
