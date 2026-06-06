@@ -98,6 +98,7 @@ endif()
 # SDL2_ttf
 find_package(SDL2_ttf CONFIG REQUIRED)
 
+
 # snake_common
 add_library(snake_common STATIC
                             src/common/protocol.c
@@ -107,10 +108,12 @@ add_library(snake_common STATIC
 target_include_directories(snake_common
                                 PUBLIC include)
 
-# snake_client
+# snake_client library
 add_library(snake_client STATIC 
                             src/client/render.c
-                            src/client/network.c)
+                            src/client/network.c
+                            src/client/input.c
+                            src/client/client.c)
 target_include_directories(snake_client 
                                 PUBLIC include
                                 PRIVATE src/client)
@@ -118,8 +121,11 @@ target_link_libraries(snake_client PUBLIC
                                         SDL2::SDL2 
                                         SDL2_ttf::SDL2_ttf
                                         snake_common)
+# client executable
+add_executable(client src/client/main.c)
+target_link_libraries(client PRIVATE snake_client)
 
-#snake_server
+# snake_server library
 add_library(snake_server STATIC
                             src/server/server.c)
 target_include_directories(snake_server 
@@ -128,9 +134,9 @@ target_include_directories(snake_server
 target_link_libraries(snake_server PUBLIC
                                         snake_common)
 
+# server executable
 add_executable(server src/server/main.c)
-target_link_libraries(server PRIVATE
-                                        snake_server)
+target_link_libraries(server PRIVATE snake_server)
 
 if ($ENV{CMAKE_EXPORT_COMPILE_COMMANDS})
     execute_process(
