@@ -111,7 +111,7 @@ static bool handle_packet(client_state* state,
     return true;
 }
 
-bool receive_server_packets(client_state* state)
+bool client_receive_packets(client_state* state)
 {
     struct pollfd pfd;
     pfd.fd = state->sockfd;
