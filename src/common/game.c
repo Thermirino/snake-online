@@ -129,3 +129,20 @@ snake* game_find_snake(game_state* gs, uint32_t snake_id)
     }
     return NULL;
 }
+
+bool game_change_snake_direction(game_state* gs, uint32_t snake_id, direction dir)
+{
+    if (!gs)
+        return false;
+
+    snake* s = game_find_snake(gs, snake_id);
+    if (!s) {
+        fprintf(stderr, "game_find_snake failed\n");
+        return false;
+    }
+    if (!snake_change_direction(s, dir)) {
+        fprintf(stderr, "snake_change_direction failed\n");
+        return false;
+    }
+    return true;
+}
