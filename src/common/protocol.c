@@ -12,7 +12,6 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
         return false;
 
     uint64_t buf_size = 0;
-    buf_size += sizeof(packet_header);
     buf_size += sizeof(game_state_header);
     for (size_t i = 0; i < gs->snakes_size; i++) {
         buf_size += sizeof(snake_header);
@@ -25,12 +24,6 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
         return false;
     }
     uint8_t* p = *buf;
-    
-    packet_header phdr;
-    phdr.size = htobe64(buf_size);
-    phdr.type = htobe32(PT_GAME_STATE);
-    memcpy(p, &phdr, sizeof(phdr));
-    p += sizeof(phdr);
 
     game_state_header ghdr;
     ghdr.width = htobe32(gs->brd.width);

@@ -31,7 +31,7 @@ typedef struct {
 
 /* PT_GAME_STATE payload */
 typedef struct {
-    int32_t width, height;
+    int32_t width, height;  // board size in cells
     uint64_t nsnakes;
 } game_state_header;
 
