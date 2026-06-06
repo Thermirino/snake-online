@@ -8,19 +8,28 @@
 
 typedef enum {
     PT_CONNECT = 0, 
+    PT_CONNECT_ACK,
     PT_INPUT, 
     PT_GAME_STATE,
 } packet_type;
 
+/* Common packet header */
 typedef struct {
     uint64_t size;          // packet size
     uint32_t type;
 } packet_header;
 
+/* PT_CONNECT_ACK payload */
 typedef struct {
-    direction dir;
+    uint32_t snake_id;
+} packet_connect_ack;
+
+/* PT_INPUT payload */
+typedef struct {
+    uint32_t dir;
 } packet_input;
 
+/* PT_GAME_STATE payload */
 typedef struct {
     int32_t width, height;
     uint64_t nsnakes;

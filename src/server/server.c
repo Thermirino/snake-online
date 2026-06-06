@@ -143,6 +143,18 @@ static bool handle_packet(server_state* state,
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }
+            client->snake_id = snake_id;
+            client->status = CLIENT_CONNECTED;
+
+            packet_connect_ack ack;
+            ack.snake_id = htobe32(snake_id);
+            if (!send_packet(client->fd,
+                             PT_CONNECT_ACK,
+                             &ack,
+                             sizeof(ack))) {
+                fprintf(stderr, "send_packet failed\n");
+                return false;
+            }
             break;
         case PT_INPUT:
             break;
