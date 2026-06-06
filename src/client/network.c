@@ -4,8 +4,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "network.h"
+#include <protocol.h>
 
-int open_clientfd(char* hostname, char* port)
+static int open_clientfd(const char* hostname, const char* port)
 {
     int clientfd;
     struct addrinfo hints, *listp, *p;
@@ -35,4 +36,50 @@ int open_clientfd(char* hostname, char* port)
     else
         return clientfd;
 }
-                                        
+
+bool client_connect(client_state* state, const char* hostname, const char* port)
+{
+    if (!state || !hostname || !port)
+        return false;
+
+    state->sockfd = open_clientfd(hostname, port);
+    if (state->sockfd == -1) {
+        fprintf(stderr, "open_clientfd failed\n");
+        return false;
+    }
+
+    if (!send_packet(state->sockfd, PT_CONNECT, NULL, 0)) {
+        fprintf(stderr, "send_packet failed\n");
+        close(state->sockfd);
+        return false;
+    }
+
+    packet_type ptype;
+    void* payload;
+    size_t payload_size;
+    if (!recv_packet(state->sockfd, &ptype, 
+                     &payload, &payload_size)) {
+        fprintf(stderr, "recv_packet failed\n");
+        close(state->sockfd);
+        return false;
+    }
+
+    if (ptype != PT_CONNECT_ACK) {
+        fprintf(stderr, "Expected PT_CONNECT_ACK (ptype = %d)\n", ptype);
+        free(payload);
+        close(state->sockfd);
+        return false;
+    }
+    if (payload_size != sizeof(packet_connect_ack)) {
+        fprintf(stderr, "Invalid payload size for a packet type PT_CONNECT_ACK");
+        free(payload);
+        close(state->sockfd);
+        return false;
+    }
+
+    packet_connect_ack* ack = payload;
+    state->snake_id = be32toh(ack->snake_id);
+    free(payload);
+
+    return true;
+}

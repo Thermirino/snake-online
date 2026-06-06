@@ -1,6 +1,9 @@
 #ifndef SNAKE_CLIENT_NETWORK_H
 #define SNAKE_CLIENT_NETWORK_H
 
-int open_clientfd(char* hostname, char* port);
+#include <stdbool.h>
+#include "client_internal.h"
+
+bool client_connect(client_state* state, const char* hostname, const char* port);
 
 #endif
