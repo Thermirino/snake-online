@@ -10,7 +10,7 @@ typedef struct {
     uint32_t snake_id;
 
     game_state gs;
-    render_context render;
+    render_context rctx;
 } client_state;
 
 #endif
