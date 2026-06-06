@@ -102,7 +102,8 @@ find_package(SDL2_ttf CONFIG REQUIRED)
 add_library(snake_common STATIC
                             src/common/protocol.c
                             src/common/game.c
-                            src/common/snake.c)
+                            src/common/snake.c
+                            src/common/color.c)
 target_include_directories(snake_common
                                 PUBLIC include)
 

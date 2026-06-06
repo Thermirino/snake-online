@@ -10,9 +10,12 @@ bool game_state_init(game_state* gs, int width, int height)
 
     gs->brd.width = width;
     gs->brd.height = height;
+
     gs->snakes = NULL;
     gs->snakes_capacity = 0;
     gs->snakes_size = 0;
+
+    gs->next_snake_id = 0;
     return true;
 }
 
@@ -88,8 +91,11 @@ bool game_find_free_place_for_snake(game_state* gs, point* pos)
     return false;
 }
 
-bool game_add_player_snake(game_state* gs, uint32_t snake_id, color_name color)
+bool game_add_player_snake(game_state* gs, uint32_t* snake_id)
 {
+    if (!gs || !snake_id)
+        return false;
+
     point pos;
     if (!game_find_free_place_for_snake(gs, &pos)) {
         fprintf(stderr, "game_find_free_place_for_snake failed\n");
@@ -97,7 +103,8 @@ bool game_add_player_snake(game_state* gs, uint32_t snake_id, color_name color)
     }
 
     snake s;
-    if (!snake_init(&s, snake_id, DIR_RIGHT, pos.y, pos.x, color)) {
+    color_name color = random_color();
+    if (!snake_init(&s, gs->next_snake_id, DIR_RIGHT, pos.y, pos.x, color)) {
         fprintf(stderr, "snake_init failed\n");
         return false;
     }
@@ -105,6 +112,9 @@ bool game_add_player_snake(game_state* gs, uint32_t snake_id, color_name color)
         fprintf(stderr, "game_state_add_snake failed\n");
         return false;
     }
+
+    *snake_id = s.id;
+    gs->next_snake_id++;
     
     return true;
 }

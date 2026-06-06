@@ -138,7 +138,11 @@ static bool handle_packet(server_state* state,
             printf("Received a CONNECT packet from client (fd=%d)\n",
                     client->fd);
             client->status = CLIENT_CONNECTED;
-            game_add_player_snake(state->gs, uint32_t snake_id, color_name color);
+            uint32_t snake_id;
+            if (!game_add_player_snake(&state->gs, &snake_id)) {
+                fprintf(stderr, "game_add_player_snake() failed\n");
+                return false;
+            }
             break;
         case PT_INPUT:
             break;
