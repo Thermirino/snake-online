@@ -109,7 +109,8 @@ target_include_directories(snake_common
 
 # snake_client
 add_library(snake_client STATIC 
-                            src/client/render.c)
+                            src/client/render.c
+                            src/client/network.c)
 target_include_directories(snake_client 
                                 PUBLIC include
                                 PRIVATE src/client)
