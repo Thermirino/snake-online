@@ -27,5 +27,6 @@ bool game_find_free_place_for_snake(game_state* gs, point* pos);
 bool game_add_player_snake(game_state* gs, uint32_t* snake_id);
 snake* game_find_snake(game_state* gs, uint32_t snake_id);
 bool game_change_snake_direction(game_state* gs, uint32_t snake_id, direction dir);
+bool game_update(game_state* gs);
 
 #endif

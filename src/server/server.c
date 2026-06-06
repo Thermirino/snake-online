@@ -164,8 +164,6 @@ static bool handle_packet(server_state* state,
                     return false;
             }
             break;
-        case PT_GAME_STATE:
-            break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",
                     ptype);
@@ -241,6 +239,10 @@ bool server_run(const char* port, int width, int height)
         }
         if (!process_clients(&state, pfds)) {
             fprintf(stderr, "process_clients failed\n");
+            return false;
+        }
+        if (!game_update(&state.gs)) {
+            fprintf(stderr, "game_update failed\n");
             return false;
         }
     }

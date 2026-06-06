@@ -146,3 +146,27 @@ bool game_change_snake_direction(game_state* gs, uint32_t snake_id, direction di
     }
     return true;
 }
+
+static bool move_snakes(game_state* gs)
+{
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        snake* s = &gs->snakes[i];
+        if (!snake_move(s)) {
+            fprintf(stderr, "snake_move failed\n");
+            return false;
+        }
+    }
+    return true;
+}
+
+bool game_update(game_state* gs)
+{
+    if (!gs)
+        return false;
+
+    if (!move_snakes(gs)) {
+        fprintf(stderr, "move_snakes failed\n");
+        return false;
+    }
+    return true;
+}
