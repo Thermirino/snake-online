@@ -147,7 +147,7 @@ static bool handle_packet(server_state* state,
             client->snake_id = snake_id;
             client->status = CLIENT_CONNECTED;
 
-            packet_connect_ack ack;
+            connect_ack_payload ack;
             ack.snake_id = htobe32(snake_id);
             if (!send_packet(client->fd,
                              PT_CONNECT_ACK,
@@ -157,10 +157,9 @@ static bool handle_packet(server_state* state,
                 return false;
             }
             break;
-
         case PT_INPUT:
             ;
-            packet_input* input = payload;
+            input_payload* input = payload;
             if (!game_change_snake_direction(&state->gs, client->snake_id, htobe32(input->dir))) {
                     fprintf(stderr, "game_change_snake_direction failed\n");
                     return false;

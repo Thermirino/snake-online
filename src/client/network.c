@@ -71,14 +71,14 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
         close(state->sockfd);
         return false;
     }
-    if (payload_size != sizeof(packet_connect_ack)) {
+    if (payload_size != sizeof(connect_ack_payload)) {
         fprintf(stderr, "Invalid payload size for a packet type PT_CONNECT_ACK");
         free(payload);
         close(state->sockfd);
         return false;
     }
 
-    packet_connect_ack* ack = payload;
+    connect_ack_payload* ack = payload;
     state->snake_id = be32toh(ack->snake_id);
     free(payload);
 

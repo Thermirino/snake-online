@@ -24,12 +24,12 @@ typedef struct {
 /* PT_CONNECT_ACK payload */
 typedef struct {
     uint32_t snake_id;
-} packet_connect_ack;
+} connect_ack_payload;
 
 /* PT_INPUT payload */
 typedef struct {
     uint32_t dir;
-} packet_input;
+} input_payload;
 
 /* PT_GAME_STATE payload */
 typedef struct {
