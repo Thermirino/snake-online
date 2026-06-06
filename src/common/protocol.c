@@ -57,22 +57,19 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
     return true;
 }
 
-bool game_state_deserialize(uint8_t* data, game_state* gs)
+bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
 {
     if (!data || !gs)
         return false;
 
     uint8_t* p = data;
-
-    packet_header phdr;
-    memcpy(&phdr, p, sizeof(phdr));
-    uint64_t packet_size = be64toh(phdr.size);
-    uint32_t packet_type = be32toh(phdr.type);
-    if (packet_type != PT_GAME_STATE)
-        return false;
-    p += sizeof(phdr);
+    uint8_t* end = p + data_size;
 
     game_state_header ghdr;
+    if (p + sizeof(ghdr) > end) {
+        fprintf(stderr, "Incorrect data\n");
+        return false;
+    }
     memcpy(&ghdr, p, sizeof(ghdr));
     gs->brd.width = be32toh(ghdr.width);
     gs->brd.height = be32toh(ghdr.height);
@@ -90,19 +87,30 @@ bool game_state_deserialize(uint8_t* data, game_state* gs)
             perror("malloc");
             return false;
         }
+
         for (size_t i = 0; i < gs->snakes_size; i++) {
+            if (p + sizeof(shdr) > end) {
+                fprintf(stderr, "Incorrect data\n");
+                for (size_t k = 0; k < i; k++) {
+                    free(gs->snakes[k].body.points);
+                }
+                free(gs->snakes);
+                return false;
+            }
+
             memcpy(&shdr, p, sizeof(shdr));
             gs->snakes[i].id = be32toh(shdr.id);
             gs->snakes[i].dir = be32toh(shdr.dir);
             gs->snakes[i].color = be32toh(shdr.color);
             gs->snakes[i].body.size = be64toh(shdr.npoints);
+            gs->snakes[i].body.capacity = gs->snakes[i].body.size;
             p += sizeof(shdr);
 
             gs->snakes[i].body.points = malloc(gs->snakes[i].body.size * sizeof(point));
             if (!gs->snakes[i].body.points) {
                 perror("malloc");
-                for (size_t j = 0; j < gs->snakes_size; j++) {
-                    free(gs->snakes[j].body.points);
+                for (size_t k = 0; k <= i; k++) {
+                    free(gs->snakes[k].body.points);
                 }
                 free(gs->snakes);
                 return false;
@@ -110,6 +118,15 @@ bool game_state_deserialize(uint8_t* data, game_state* gs)
 
             point_data pdata;
             for (size_t j = 0; j < gs->snakes[i].body.size; j++) {
+                if (p + sizeof(pdata) > end) {
+                    fprintf(stderr, "Incorrect data\n");
+                    for (size_t k = 0; k <= i; k++) {
+                        free(gs->snakes[k].body.points);
+                    }
+                    free(gs->snakes);
+                    return false;
+                }
+
                 memcpy(&pdata, p, sizeof(pdata));
                 gs->snakes[i].body.points[j].y = be32toh(pdata.y);
                 gs->snakes[i].body.points[j].x = be32toh(pdata.x);
@@ -118,8 +135,14 @@ bool game_state_deserialize(uint8_t* data, game_state* gs)
         }
     }
 
-    if (p != data + packet_size)
+    if (p != data + data_size) {
+        fprintf(stderr, "Incorrect data\n");
+        for (size_t k = 0; k < gs->snakes_size; k++) {
+            free(gs->snakes[k].body.points);
+        }
+        free(gs->snakes);
         return false;
+    }
     return true;
 }
 
@@ -179,7 +202,7 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
         return false;
     }
     *ptype = be32toh(phdr.type);
-    if (*ptype < 0 || *ptype > 2) {
+    if (*ptype < 0 || *ptype > PT_COUNT) {
         fprintf(stderr, "Invalid packet type (%d)\n", *ptype);
         return false;
     }
@@ -209,6 +232,11 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
 
 bool send_packet(int fd, packet_type type, const void* payload, size_t payload_size)
 {
+    if (type < 0 || type > PT_COUNT) {
+        fprintf(stderr, "Invalid packet type (%d)\n", type);
+        return false;
+    }
+
     packet_header phdr;
     phdr.size = htobe64(sizeof(phdr) + payload_size);
     phdr.type = htobe32(type);

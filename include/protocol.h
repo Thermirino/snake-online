@@ -11,6 +11,8 @@ typedef enum {
     PT_CONNECT_ACK,
     PT_INPUT, 
     PT_GAME_STATE,
+
+    PT_COUNT
 } packet_type;
 
 /* Common packet header */
@@ -47,7 +49,7 @@ typedef struct {
 } point_data;
 
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size);
-bool game_state_deserialize(uint8_t* data, game_state* gs);
+bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs);
 bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size);
 bool send_packet(int fd, packet_type type, const void* payload, size_t payload_size);
 ssize_t recv_all(int fd, void* usrbuf, size_t n);

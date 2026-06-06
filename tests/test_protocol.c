@@ -31,7 +31,9 @@ static void test_serialize(void)
 
     game_state gs2;
     memset(&gs2, 0, sizeof(gs2));
-    TEST_ASSERT_TRUE(game_state_deserialize(buf, &gs2));
+    TEST_ASSERT_FALSE(game_state_deserialize(buf, 0, &gs2));
+    TEST_ASSERT_FALSE(game_state_deserialize(buf, size - 1, &gs2));
+    TEST_ASSERT_TRUE(game_state_deserialize(buf, size, &gs2));
     TEST_ASSERT_EQUAL(gs1.brd.width, gs2.brd.width);
     TEST_ASSERT_EQUAL(gs1.brd.height, gs2.brd.height);
     TEST_ASSERT_EQUAL(0, gs2.snakes_capacity);
@@ -56,7 +58,8 @@ static void test_serialize(void)
 
     TEST_ASSERT_TRUE(game_state_serialize(&gs1, &buf, &size));
     memset(&gs2, 0, sizeof(gs2));
-    TEST_ASSERT_TRUE(game_state_deserialize(buf, &gs2));
+    TEST_ASSERT_FALSE(game_state_deserialize(buf, size - 1, &gs2));
+    TEST_ASSERT_TRUE(game_state_deserialize(buf, size, &gs2));
     TEST_ASSERT_EQUAL(gs1.brd.width, gs2.brd.width);
     TEST_ASSERT_EQUAL(gs1.brd.height, gs2.brd.height);
     TEST_ASSERT_GREATER_OR_EQUAL(2, gs2.snakes_capacity);
