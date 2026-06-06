@@ -24,10 +24,10 @@ typedef struct {
 } render_context;
 
 render_context* render_init(int win_width, int win_height);
-void render_destroy(render_context* rs);
-bool render_game(render_context* rs, const game_state* gs);
-bool render_grid(render_context* rs, const board* brd);
-bool render_snake(render_context* rs, const snake* s);
-bool render_snakes(render_context* rs, const snake* snakes, size_t snakes_size);
+void render_destroy(render_context* rctx);
+bool render_game(render_context* rctx, const game_state* gs);
+bool render_grid(render_context* rctx, const board* brd);
+bool render_snake(render_context* rctx, const snake* s);
+bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size);
 
 #endif
