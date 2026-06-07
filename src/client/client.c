@@ -1,14 +1,40 @@
 #include <client.h>
+#include "game.h"
 #include "input.h"
 #include "network.h"
 #include "client_internal.h"
+#include "render.h"
+
+static bool client_state_init(client_state* state, const char* hostname, const char* port)
+{
+    if (!client_connect(state, hostname, port)) {
+        fprintf(stderr, "client_connect failed\n");
+        return false;
+    }
+
+    if (!render_init(&state->rctx, state->gs.brd.width, state->gs.brd.height)) {
+        fprintf(stderr, "render_init failed\n");
+        client_disconnect(state);
+        return false;
+    }
+    return true;
+}
+
+static void client_state_destroy(client_state* state)
+{
+    if (!state)
+        return;
+
+    game_state_destroy(&state->gs);
+    render_destroy(&state->rctx);
+    client_disconnect(state);
+}
 
 bool client_run(const char* hostname, const char* port)
 {
     client_state state;
-
-    if (!client_connect(&state, hostname, port)) {
-        fprintf(stderr, "client_connect failed\n");
+    if (!client_state_init(&state, hostname, port)) {
+        fprintf(stderr, "client_state_init failed\n");
         return false;
     }
 
@@ -29,6 +55,8 @@ bool client_run(const char* hostname, const char* port)
             return false;
         }
     }
+    
+    client_state_destroy(&state);
 
     return true;
 }
