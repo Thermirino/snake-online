@@ -10,6 +10,22 @@
 static ssize_t recv_all(int fd, void* usrbuf, size_t n);
 static ssize_t send_all(int fd, const void* usrbuf, size_t n);
 
+const char* packet_type_str(packet_type ptype)
+{
+    switch (ptype) {
+        case PT_CONNECT:
+            return "PT_CONNECT";
+        case PT_CONNECT_ACK:
+            return "PT_CONNECT_ACK";
+        case PT_INPUT:
+            return "PT_INPUT";
+        case PT_GAME_STATE:
+            return "PT_GAME_STATE";
+        default:
+            return "Unknown";
+    }
+}
+
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
 {
     if (!gs || !buf || !size)
@@ -231,19 +247,23 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
         }
     } else
         *payload = NULL;
+
+    LOG_NET("Received packet, fd = %d, type = %s, payload_size = %zu\n",
+            fd, packet_type_str(*ptype), *payload_size);
+
     return true;
 }
 
-bool send_packet(int fd, packet_type type, const void* payload, size_t payload_size)
+bool send_packet(int fd, packet_type ptype, const void* payload, size_t payload_size)
 {
-    if (type < 0 || type > PT_COUNT) {
-        fprintf(stderr, "Invalid packet type (%d)\n", type);
+    if (ptype < 0 || ptype > PT_COUNT) {
+        fprintf(stderr, "Invalid packet type (%d)\n", ptype);
         return false;
     }
 
     packet_header phdr;
     phdr.size = htobe64(sizeof(phdr) + payload_size);
-    phdr.type = htobe32(type);
+    phdr.type = htobe32(ptype);
     ssize_t nbytes = send_all(fd, &phdr, sizeof(phdr));
     if (nbytes < 0) {
         perror("send_all");
@@ -263,5 +283,9 @@ bool send_packet(int fd, packet_type type, const void* payload, size_t payload_s
             return false;
         }
     }
+
+    LOG_NET("Sent packet, fd = %d, type = %s, payload_size = %zu\n",
+            fd, packet_type_str(ptype), payload_size);
+
     return true;
 }

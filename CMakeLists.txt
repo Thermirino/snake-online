@@ -107,6 +107,8 @@ add_library(snake_common STATIC
                             src/common/color.c)
 target_include_directories(snake_common
                                 PUBLIC include)
+target_compile_definitions(snake_common PRIVATE
+                           $<$<CONFIG:Debug>:DEBUG_NETWORK>)
 
 # snake_client library
 add_library(snake_client STATIC 
@@ -121,6 +123,7 @@ target_link_libraries(snake_client PUBLIC
                                         SDL2::SDL2 
                                         SDL2_ttf::SDL2_ttf
                                         snake_common)
+
 # client executable
 add_executable(client src/client/main.c)
 target_link_libraries(client PRIVATE snake_client)
