@@ -1,4 +1,6 @@
+#include <SDL_stdinc.h>
 #include <client.h>
+#include <SDL_timer.h>
 #include "game.h"
 #include "input.h"
 #include "network.h"
@@ -40,6 +42,8 @@ bool client_run(const char* hostname, const char* port)
 
     bool quit_request = false;
     while (!quit_request) {
+        Uint64 frame_start = SDL_GetTicks64();
+
         if (!process_input(&state, &quit_request)) {
             fprintf(stderr, "process_input failed\n");
             return false;
@@ -48,6 +52,11 @@ bool client_run(const char* hostname, const char* port)
         if (!client_receive_packets(&state)) {
             fprintf(stderr, "receive_server_packets failed\n");
             return false;
+        }
+
+        Uint64 frame_time = SDL_GetTicks64() - frame_start;
+        if (frame_time < TICKS_PER_FRAME) {
+            SDL_Delay(TICKS_PER_FRAME - frame_time);
         }
 
         if (!render_game(&state.rctx, &state.gs)) {

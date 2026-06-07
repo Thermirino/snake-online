@@ -4,6 +4,9 @@
 #include <game.h>
 #include <render.h>
 
+#define FPS                 60
+#define TICKS_PER_FRAME     1000 / FPS
+
 typedef struct {
     int sockfd;
 
