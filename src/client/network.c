@@ -85,6 +85,14 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
     return true;
 }
 
+void client_disconnect(client_state* state)
+{
+    if (!state)
+        return;
+
+    close(state->sockfd);
+}
+
 static bool handle_packet(client_state* state,
                           packet_type ptype,
                           void* payload,
