@@ -1,3 +1,5 @@
+#include <SDL_error.h>
+#include <SDL_render.h>
 #include <stdlib.h>
 #include "render.h"
 
@@ -181,6 +183,11 @@ bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size
 
 bool render_game(render_context* rctx, const game_state* gs)
 {
+    if (SDL_RenderClear(rctx->renderer)) {
+        fprintf(stderr, "SDL_RenderClear: %s\n",
+                SDL_GetError());
+    }
+
     if (!render_snakes(rctx, gs->snakes, gs->snakes_size)) {
         fprintf(stderr, "render_snakes failed\n");
         return false;
@@ -189,5 +196,7 @@ bool render_game(render_context* rctx, const game_state* gs)
         fprintf(stderr, "render_grid failed\n");
         return false;
     }
+
+    SDL_RenderPresent(rctx->renderer);
     return true;
 }
