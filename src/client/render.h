@@ -23,7 +23,7 @@ typedef struct {
     theme colors;
 } render_context;
 
-render_context* render_init(int win_width, int win_height);
+bool render_init(render_context* rctx, int win_width, int win_height);
 void render_destroy(render_context* rctx);
 bool render_game(render_context* rctx, const game_state* gs);
 bool render_grid(render_context* rctx, const board* brd);

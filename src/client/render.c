@@ -16,14 +16,14 @@ static const SDL_Color colors[] = {
 static SDL_Color get_color(color_name cname);
 static bool set_color(render_context* rs, color_name cname);
 
-render_context* render_init(int win_width, int win_height)
+bool render_init(render_context* rctx, int win_width, int win_height)
 {
-    render_context* rctx = malloc(sizeof(*rctx));
     if (!rctx) {
-        perror("malloc");
-        return NULL;
+        return false;
     }
-    memset(rctx, 0, sizeof(*rctx));
+    rctx->window = NULL;
+    rctx->renderer = NULL;
+    rctx->text_font = NULL;
 
     if (win_width <= 0) {
         win_width = 1024;
@@ -79,7 +79,7 @@ render_context* render_init(int win_width, int win_height)
     set_color(rctx, WHITE);
     SDL_RenderClear(rctx->renderer);
 
-    return rctx;
+    return true;
 
 failed:
     TTF_CloseFont(rctx->text_font);
@@ -87,8 +87,7 @@ failed:
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
     SDL_Quit();
-    free(rctx);
-    return NULL;
+    return false;
 }
 
 void render_destroy(render_context* rctx)
@@ -101,7 +100,6 @@ void render_destroy(render_context* rctx)
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
     SDL_Quit();
-    free(rctx);
 }
 
 static SDL_Color get_color(color_name cname)
