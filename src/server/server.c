@@ -216,15 +216,20 @@ static bool broadcast_game_state(server_state* state)
         fprintf(stderr, "game_state_serialize failed\n");
         return false;
     }
+
     for (size_t i = 0; i < state->nclients; i++) {
         client* cl = &state->clients[i];
-        if (!send_packet(cl->fd, PT_GAME_STATE, payload, size)) {
-            fprintf(stderr, "send_packet failed (fd = %d)\n", cl->fd);
-            free(payload);
-            return false;
+        if (cl->status == CLIENT_CONNECTED) {
+            if (!send_packet(cl->fd, PT_GAME_STATE, payload, size)) {
+                fprintf(stderr, "send_packet failed (fd = %d)\n", cl->fd);
+                free(payload);
+                return false;
+            }
         }
     }
+
     free(payload);
+
     return true;
 }
 
