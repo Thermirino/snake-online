@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -233,6 +234,13 @@ static bool broadcast_game_state(server_state* state)
     return true;
 }
 
+static uint64_t get_time_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
+}
+
 bool server_run(const char* port, int width, int height)
 {
     server_state state;
@@ -244,8 +252,14 @@ bool server_run(const char* port, int width, int height)
 
     struct pollfd pfds[MAX_CLIENTS + 1];
     int nready;
-    int timeout = 20;
+    int poll_timeout = 0;
+    uint64_t last_update_time = get_time_ms();
     while (1) {
+        uint64_t cur_time = get_time_ms();
+        poll_timeout = TICK_MS - (cur_time - last_update_time);
+        if (poll_timeout < 0)
+            poll_timeout = 0;
+
         pfds[0].fd = state.listenfd;
         pfds[0].events = POLLIN;
         for (size_t i = 0; i < state.nclients; i++) {
@@ -253,7 +267,7 @@ bool server_run(const char* port, int width, int height)
             pfds[i + 1].events = POLLIN;
         }
 
-        nready = poll(pfds, state.nclients + 1, timeout);
+        nready = poll(pfds, state.nclients + 1, poll_timeout);
         if (nready == -1) {
             perror("poll");
             return false;
@@ -263,17 +277,25 @@ bool server_run(const char* port, int width, int height)
             fprintf(stderr, "accept_connections failed\n");
             return false;
         }
+
         if (!process_clients(&state, pfds)) {
             fprintf(stderr, "process_clients failed\n");
             return false;
         }
-        if (!game_update(&state.gs)) {
-            fprintf(stderr, "game_update failed\n");
-            return false;
-        }
-        if (!broadcast_game_state(&state)) {
-            fprintf(stderr, "broadcast_game_state failed\n");
-            return false;
+
+        cur_time = get_time_ms();
+        if (cur_time - last_update_time >= TICK_MS) {
+            if (!game_update(&state.gs)) {
+                fprintf(stderr, "game_update failed\n");
+                return false;
+            }
+
+            if (!broadcast_game_state(&state)) {
+                fprintf(stderr, "broadcast_game_state failed\n");
+                return false;
+            }
+
+            last_update_time += TICK_MS;
         }
     }
 
