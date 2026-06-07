@@ -40,18 +40,21 @@ bool client_run(const char* hostname, const char* port)
         return false;
     }
 
+    bool rc = true;
     bool quit_request = false;
     while (!quit_request) {
         Uint64 frame_start = SDL_GetTicks64();
 
         if (!process_input(&state, &quit_request)) {
             fprintf(stderr, "process_input failed\n");
-            return false;
+            rc = false;
+            break;
         }
 
         if (!client_receive_packets(&state)) {
             fprintf(stderr, "receive_server_packets failed\n");
-            return false;
+            rc = false;
+            break;
         }
 
         Uint64 frame_time = SDL_GetTicks64() - frame_start;
@@ -61,11 +64,12 @@ bool client_run(const char* hostname, const char* port)
 
         if (!render_game(&state.rctx, &state.gs)) {
             fprintf(stderr, "render_game failed\n");
-            return false;
+            rc = false;
+            break;
         }
     }
     
     client_state_destroy(&state);
 
-    return true;
+    return rc;
 }

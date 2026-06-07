@@ -250,6 +250,7 @@ bool server_run(const char* port, int width, int height)
     }
     printf("Server is running on port: %s\n", port);
 
+    bool rc = true;
     struct pollfd pfds[MAX_CLIENTS + 1];
     int nready;
     int poll_timeout = 0;
@@ -270,29 +271,34 @@ bool server_run(const char* port, int width, int height)
         nready = poll(pfds, state.nclients + 1, poll_timeout);
         if (nready == -1) {
             perror("poll");
-            return false;
+            rc = false;
+            break;
         }
 
         if (!accept_connections(&state, pfds)) {
             fprintf(stderr, "accept_connections failed\n");
-            return false;
+            rc = false;
+            break;
         }
 
         if (!process_clients(&state, pfds)) {
             fprintf(stderr, "process_clients failed\n");
-            return false;
+            rc = false;
+            break;
         }
 
         cur_time = get_time_ms();
         if (cur_time - last_update_time >= TICK_MS) {
             if (!game_update(&state.gs)) {
                 fprintf(stderr, "game_update failed\n");
-                return false;
+                rc = false;
+                break;
             }
 
             if (!broadcast_game_state(&state)) {
                 fprintf(stderr, "broadcast_game_state failed\n");
-                return false;
+                rc = false;
+                break;
             }
 
             last_update_time += TICK_MS;
@@ -300,5 +306,5 @@ bool server_run(const char* port, int width, int height)
     }
 
     server_state_destroy(&state);
-    return true;
+    return rc;
 }
