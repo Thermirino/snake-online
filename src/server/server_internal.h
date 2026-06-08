@@ -12,7 +12,8 @@
 
 typedef enum {
     CLIENT_CONNECTING = 0,
-    CLIENT_CONNECTED
+    CLIENT_CONNECTED,
+    CLIENT_DISCONNECTED
 } client_status;
 
 typedef struct {

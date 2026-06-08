@@ -89,6 +89,27 @@ static bool add_client(server_state* state, int clientfd)
     return true;
 }
 
+static void remove_disconnected_clients(server_state* state)
+{
+    size_t i = 0;
+    while (i < state->nclients) {
+        client* cl = &state->clients[i];
+
+        if (cl->status == CLIENT_DISCONNECTED) {
+            if (!game_delete_snake(&state->gs, cl->snake_id)) {
+                fprintf(stderr, "game_delete_snake failed\n");
+            }
+            close(cl->fd);
+
+            size_t n = state->nclients - i - 1;
+            memmove(&state->clients[i], &state->clients[i + 1], n * sizeof(client));
+            state->nclients--;
+
+        } else
+            i++;
+    }
+}
+
 static bool accept_connections(server_state* state, struct pollfd* pfds)
 {
     if (pfds[0].revents & POLLIN) {
@@ -114,7 +135,7 @@ static bool accept_connections(server_state* state, struct pollfd* pfds)
             fprintf(stderr, "getnameinfo: %s\n", gai_strerror(rc));
             return false;
         }
-        printf("Client connected (%s:%s)\n", host, serv);
+        printf("Client connected (%s:%s) | Total: %zu\n", host, serv, state->nclients);
     }
     return true;
 }
@@ -161,10 +182,12 @@ static bool handle_packet(server_state* state,
         case PT_INPUT:
             ;
             input_payload* input = payload;
-            if (!game_change_snake_direction(&state->gs, client->snake_id, htobe32(input->dir))) {
+            if (!game_change_snake_direction(&state->gs, client->snake_id, be32toh(input->dir))) {
                     fprintf(stderr, "game_change_snake_direction failed\n");
                     return false;
             }
+            break;
+        case PT_DISCONNECT:
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",
@@ -181,11 +204,18 @@ static bool process_client(server_state* state, client* client, struct pollfd* p
         packet_type ptype;
         void* payload;
         size_t payload_size;
-        if (!recv_packet(pfd->fd, &ptype, 
-                         &payload, &payload_size)) {
+        recv_status status = recv_packet(pfd->fd, &ptype,
+                                         &payload, &payload_size);
+        if (status == RECV_CLOSED) {
+            client->status = CLIENT_DISCONNECTED;
+            fprintf(stdout, "Client disconnected (fd = %d)\n", client->fd);
+            return true;
+        } else if (status != RECV_OK) {
             fprintf(stderr, "recv_packet failed\n");
+            free(payload);
             return false;
         }
+
         if (!handle_packet(state, client,
                            ptype, payload, payload_size)) {
             fprintf(stderr, "handle_packet failed\n");
@@ -197,7 +227,7 @@ static bool process_client(server_state* state, client* client, struct pollfd* p
 }
 
 static bool process_clients(server_state* state,
-                            struct pollfd* pfds)
+        struct pollfd* pfds)
 {
     for (size_t i = 0; i < state->nclients; i++) {
         if (pfds[i + 1].revents & POLLIN) {
@@ -261,11 +291,17 @@ bool server_run(const char* port, int width, int height)
         if (poll_timeout < 0)
             poll_timeout = 0;
 
+        remove_disconnected_clients(&state);
+
         pfds[0].fd = state.listenfd;
         pfds[0].events = POLLIN;
-        for (size_t i = 0; i < state.nclients; i++) {
-            pfds[i + 1].fd = state.clients[i].fd;
-            pfds[i + 1].events = POLLIN;
+        for (size_t i = 0; i < MAX_CLIENTS; i++) {
+            if (i < state.nclients) {
+                pfds[i + 1].fd = state.clients[i].fd;
+                pfds[i + 1].events = POLLIN;
+            } else {
+                pfds[i + 1].fd = -1;
+            }
         }
 
         nready = poll(pfds, state.nclients + 1, poll_timeout);
