@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -11,6 +12,25 @@
 #include "game.h"
 #include "server_internal.h"
 #include "protocol.h"
+
+static int open_listenfd(const char* port);
+static client* add_client(server_state* state, int clientfd);
+static bool remove_client(server_state* state, size_t index);
+static bool remove_disconnected_clients(server_state* state);
+static bool accept_connections(server_state* state, struct pollfd* pfds);
+static bool handle_packet(server_state* state,  client* client, packet_type ptype, void* payload, size_t payload_size);
+static bool process_client(server_state* state, client* client, struct pollfd* pfd);
+static bool process_clients(server_state* state, struct pollfd* pfds);
+static bool broadcast_game_state(server_state* state);
+static uint64_t get_time_ms(void);
+
+static int server_stop = 0;
+
+static void sigint_handler(int sig)
+{
+    (void)sig;
+    server_stop = 1;
+}
 
 static int open_listenfd(const char* port)
 {
@@ -76,20 +96,31 @@ void server_state_destroy(server_state* state)
     game_state_destroy(&state->gs);
 }
 
-static bool add_client(server_state* state, int clientfd)
+static client* add_client(server_state* state, int clientfd)
 {
     if (state->nclients >= MAX_CLIENTS) {
         fprintf(stderr, "add_client: Too Many Clients\n");
-        return false;
+        return NULL;
     }
     state->clients[state->nclients].fd = clientfd;
     state->clients[state->nclients].status = CLIENT_CONNECTING;
     state->clients[state->nclients].snake_id = 0;
     state->nclients++;
+    return &state->clients[state->nclients - 1];
+}
+
+static bool remove_client(server_state* state, size_t index)
+{
+    if (index >= state->nclients) {
+        return false;
+    }
+    size_t n = state->nclients - index - 1;
+    memmove(&state->clients[index], &state->clients[index + 1], n * sizeof(client));
+    state->nclients--;
     return true;
 }
 
-static void remove_disconnected_clients(server_state* state)
+static bool remove_disconnected_clients(server_state* state)
 {
     size_t i = 0;
     while (i < state->nclients) {
@@ -100,17 +131,19 @@ static void remove_disconnected_clients(server_state* state)
             if (cl->snake_id != 0) {
                 if (!game_delete_snake(&state->gs, cl->snake_id)) {
                     fprintf(stderr, "game_delete_snake failed\n");
+                    return false;
                 }
             }
             close(cl->fd);
 
-            size_t n = state->nclients - i - 1;
-            memmove(&state->clients[i], &state->clients[i + 1], n * sizeof(client));
-            state->nclients--;
-
+            if (!remove_client(state, i)) {
+                fprintf(stderr, "remove_client failed\n");
+                return false;
+            }
         } else
             i++;
     }
+    return true;
 }
 
 static bool accept_connections(server_state* state, struct pollfd* pfds)
@@ -123,7 +156,9 @@ static bool accept_connections(server_state* state, struct pollfd* pfds)
             perror("accept");
             return false;
         }
-        if (!add_client(state, connfd)) {
+
+        client* cl;
+        if (!(cl = add_client(state, connfd))) {
             close(connfd);
             return false;
         }
@@ -132,11 +167,15 @@ static bool accept_connections(server_state* state, struct pollfd* pfds)
         char serv[NI_MAXSERV];
         int flags = NI_NUMERICHOST | NI_NUMERICSERV;
         int rc = getnameinfo((struct sockaddr*)&addr, addr_len, 
-                host, sizeof(host), 
-                serv, sizeof(serv), 
-                flags);
+                             host, sizeof(host), 
+                             serv, sizeof(serv), 
+                             flags);
         if (rc) {
             fprintf(stderr, "getnameinfo: %s\n", gai_strerror(rc));
+            close(cl->fd);
+            if (!remove_client(state, state->nclients - 1)) {
+                fprintf(stderr, "remove_client failed\n");
+            }
             return false;
         }
         printf("Client connected (%s:%s) | Total: %zu\n", host, serv, state->nclients);
@@ -219,12 +258,14 @@ static bool process_client(server_state* state, client* client, struct pollfd* p
             fprintf(stdout, "Client disconnected (fd = %d)\n", client->fd);
             return true;
         } else if (status != RECV_OK) {
+            client->status = CLIENT_DISCONNECTED;
             fprintf(stderr, "recv_packet failed\n");
             return false;
         }
 
         if (!handle_packet(state, client,
                            ptype, payload, payload_size)) {
+            client->status = CLIENT_DISCONNECTED;
             fprintf(stderr, "handle_packet failed\n");
             ret = false;
         }
@@ -239,7 +280,7 @@ static bool process_clients(server_state* state,
     for (size_t i = 0; i < state->nclients; i++) {
         if (pfds[i + 1].revents & POLLIN) {
             if (!process_client(state, &state->clients[i], &pfds[i + 1])) {
-                fprintf(stderr, "process client (fd = %d) failed\n", pfds[i].fd);
+                fprintf(stderr, "process client (fd = %d) failed\n", pfds[i + 1].fd);
             }
         }
     }
@@ -259,9 +300,9 @@ static bool broadcast_game_state(server_state* state)
         client* cl = &state->clients[i];
         if (cl->status == CLIENT_CONNECTED) {
             if (!send_packet(cl->fd, PT_GAME_STATE, payload, size)) {
+                cl->status = CLIENT_DISCONNECTED;
                 fprintf(stderr, "send_packet failed (fd = %d)\n", cl->fd);
-                free(payload);
-                return false;
+                continue;
             }
         }
     }
@@ -280,6 +321,8 @@ static uint64_t get_time_ms(void)
 
 bool server_run(const char* port, int width, int height)
 {
+    signal(SIGINT, sigint_handler);
+
     server_state state;
     if (!server_state_init(&state, port, width, height)) {
         fprintf(stderr, "server_state_init failed\n");
@@ -292,13 +335,19 @@ bool server_run(const char* port, int width, int height)
     int nready;
     int poll_timeout = 0;
     uint64_t last_update_time = get_time_ms();
-    while (1) {
+    while (!server_stop) {
         uint64_t cur_time = get_time_ms();
-        poll_timeout = TICK_MS - (cur_time - last_update_time);
-        if (poll_timeout < 0)
+        uint64_t elapsed_time = cur_time - last_update_time;
+        if (elapsed_time >= TICK_MS)
             poll_timeout = 0;
+        else
+            poll_timeout = TICK_MS - elapsed_time;
 
-        remove_disconnected_clients(&state);
+        if (!remove_disconnected_clients(&state)) {
+            fprintf(stderr, "remove_disconnected_clients failed\n");
+            rc = false;
+            break;
+        }
 
         pfds[0].fd = state.listenfd;
         pfds[0].events = POLLIN;
@@ -320,8 +369,6 @@ bool server_run(const char* port, int width, int height)
 
         if (!accept_connections(&state, pfds)) {
             fprintf(stderr, "accept_connections failed\n");
-            rc = false;
-            break;
         }
 
         if (!process_clients(&state, pfds)) {
