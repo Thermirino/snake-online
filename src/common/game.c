@@ -1,6 +1,7 @@
 #include "snake.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <game.h>
 
 bool game_state_init(game_state* gs, int width, int height)
@@ -49,6 +50,24 @@ bool game_state_add_snake(game_state* gs, snake* s)
     }
     gs->snakes[gs->snakes_size++] = *s;
     return true;
+}
+
+bool game_delete_snake(game_state* gs, uint32_t snake_id)
+{
+    if (!gs)
+        return false;
+
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        snake* sn = &gs->snakes[i];
+        if (sn->id == snake_id) {
+            size_t n = gs->snakes_size - i - 1;
+            memmove(&gs->snakes[i], &gs->snakes[i + 1], n * sizeof(snake));
+
+            gs->snakes_size--;
+            return true;
+        }
+    }
+    return false;
 }
 
 bool game_check_collision(game_state* gs, point pos)
