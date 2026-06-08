@@ -21,6 +21,8 @@ const char* packet_type_str(packet_type ptype)
             return "PT_INPUT";
         case PT_GAME_STATE:
             return "PT_GAME_STATE";
+        case PT_DISCONNECT:
+            return "PT_DISCONNECT";
         default:
             return "Unknown";
     }
@@ -207,24 +209,26 @@ static ssize_t send_all(int fd, const void* usrbuf, size_t n)
 
 }
 
-bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size)
+recv_status recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size)
 {
     if (!ptype || !payload || !payload_size)
-        return false;
+        return RECV_ERROR;
 
     packet_header phdr;
     ssize_t nbytes = recv_all(fd, &phdr, sizeof(phdr));
     if (nbytes < 0) {
         perror("recv_all");
-        return false;
+        return RECV_ERROR;
+    } else if (nbytes == 0) {
+        return RECV_CLOSED;
     } else if (nbytes != sizeof(phdr)) {
         fprintf(stderr, "Received insufficient data\n");
-        return false;
+        return RECV_ERROR;
     }
     *ptype = be32toh(phdr.type);
     if (*ptype < 0 || *ptype > PT_COUNT) {
         fprintf(stderr, "Invalid packet type (%d)\n", *ptype);
-        return false;
+        return RECV_ERROR;
     }
     size_t packet_size = be64toh(phdr.size);
 
@@ -233,17 +237,17 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
         *payload = malloc(*payload_size);
         if (!*payload) {
             perror("malloc");
-            return false;
+            return RECV_ERROR;
         }
         nbytes = recv_all(fd, *payload, *payload_size);
         if (nbytes < 0) {
             free(*payload);
             perror("recv_all");
-            return false;
+            return RECV_ERROR;
         } else if ((size_t)nbytes != *payload_size) {
             free(*payload);
             fprintf(stderr, "Received insufficient data\n");
-            return false;
+            return RECV_ERROR;
         }
     } else
         *payload = NULL;
@@ -251,7 +255,7 @@ bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_siz
     LOG_NET("Received packet, fd = %d, type = %s, payload_size = %zu\n",
             fd, packet_type_str(*ptype), *payload_size);
 
-    return true;
+    return RECV_OK;
 }
 
 bool send_packet(int fd, packet_type ptype, const void* payload, size_t payload_size)

@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "network.h"
+#include "game.h"
 #include <protocol.h>
 
 static int open_clientfd(const char* hostname, const char* port)
@@ -58,8 +59,8 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
     packet_type ptype;
     void* payload;
     size_t payload_size;
-    if (!recv_packet(state->sockfd, &ptype, 
-                     &payload, &payload_size)) {
+    recv_status status = recv_packet(state->sockfd, &ptype, &payload, &payload_size);
+    if (status != RECV_OK) {
         fprintf(stderr, "recv_packet failed\n");
         close(state->sockfd);
         return false;
@@ -72,7 +73,7 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
         return false;
     }
     if (payload_size != sizeof(connect_ack_payload)) {
-        fprintf(stderr, "Invalid payload size for a packet type PT_CONNECT_ACK");
+        fprintf(stderr, "Invalid payload size for a packet type PT_CONNECT_ACK\n");
         free(payload);
         close(state->sockfd);
         return false;
@@ -90,6 +91,9 @@ void client_disconnect(client_state* state)
     if (!state)
         return;
 
+    if (!send_packet(state->sockfd, PT_DISCONNECT, NULL, 0)) {
+        fprintf(stderr, "send_packet failed\n");
+    }
     close(state->sockfd);
 }
 
@@ -132,7 +136,11 @@ bool client_receive_packets(client_state* state)
         void* payload;
         size_t payload_size;
 
-        if (!recv_packet(state->sockfd, &ptype, &payload, &payload_size)) {
+        recv_status status = recv_packet(state->sockfd, &ptype, &payload, &payload_size);
+        if (status == RECV_CLOSED) {
+            fprintf(stderr, "Connection closed\n");
+            return false;
+        } else if (status != RECV_OK) {
             fprintf(stderr, "recv_packet failed\n");
             return false;
         }

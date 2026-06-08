@@ -52,7 +52,7 @@ bool client_run(const char* hostname, const char* port)
         }
 
         if (!client_receive_packets(&state)) {
-            fprintf(stderr, "receive_server_packets failed\n");
+            fprintf(stderr, "client_receive_packets failed\n");
             rc = false;
             break;
         }

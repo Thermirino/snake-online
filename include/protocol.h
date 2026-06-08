@@ -13,10 +13,17 @@
 #endif
 
 typedef enum {
+    RECV_OK,
+    RECV_CLOSED,
+    RECV_ERROR
+} recv_status;
+
+typedef enum {
     PT_CONNECT = 0, 
     PT_CONNECT_ACK,
     PT_INPUT, 
     PT_GAME_STATE,
+    PT_DISCONNECT,
 
     PT_COUNT
 } packet_type;
@@ -59,7 +66,7 @@ const char* packet_type_str(packet_type ptype);
 bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size);
 bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs);
 
-bool recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size);
+recv_status recv_packet(int fd, packet_type* ptype, void** payload, size_t* payload_size);
 bool send_packet(int fd, packet_type ptype, const void* payload, size_t payload_size);
 
 #endif
