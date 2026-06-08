@@ -84,7 +84,7 @@ static bool add_client(server_state* state, int clientfd)
     }
     state->clients[state->nclients].fd = clientfd;
     state->clients[state->nclients].status = CLIENT_CONNECTING;
-    state->clients[state->nclients].snake_id = -1;
+    state->clients[state->nclients].snake_id = 0;
     state->nclients++;
     return true;
 }
@@ -96,8 +96,11 @@ static void remove_disconnected_clients(server_state* state)
         client* cl = &state->clients[i];
 
         if (cl->status == CLIENT_DISCONNECTED) {
-            if (!game_delete_snake(&state->gs, cl->snake_id)) {
-                fprintf(stderr, "game_delete_snake failed\n");
+
+            if (cl->snake_id != 0) {
+                if (!game_delete_snake(&state->gs, cl->snake_id)) {
+                    fprintf(stderr, "game_delete_snake failed\n");
+                }
             }
             close(cl->fd);
 
@@ -121,6 +124,7 @@ static bool accept_connections(server_state* state, struct pollfd* pfds)
             return false;
         }
         if (!add_client(state, connfd)) {
+            close(connfd);
             return false;
         }
 
@@ -151,7 +155,6 @@ static bool handle_packet(server_state* state,
         ptype != PT_CONNECT) {
         printf("The client is not connected (fd = %d)\n",
                 client->fd);
-        free(payload);
         return false;
     }
 
@@ -159,6 +162,11 @@ static bool handle_packet(server_state* state,
         case PT_CONNECT:
             printf("Received a CONNECT packet from client (fd=%d)\n",
                     client->fd);
+
+            if (client->status != CLIENT_CONNECTING) {
+                fprintf(stderr, "Received a duplicate CONNECT packet\n");
+                return false;
+            }
 
             uint32_t snake_id;
             if (!game_add_player_snake(&state->gs, &snake_id)) {
@@ -212,7 +220,6 @@ static bool process_client(server_state* state, client* client, struct pollfd* p
             return true;
         } else if (status != RECV_OK) {
             fprintf(stderr, "recv_packet failed\n");
-            free(payload);
             return false;
         }
 

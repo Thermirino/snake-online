@@ -16,7 +16,7 @@ bool game_state_init(game_state* gs, int width, int height)
     gs->snakes_capacity = 0;
     gs->snakes_size = 0;
 
-    gs->next_snake_id = 0;
+    gs->next_snake_id = 1;
     return true;
 }
 
