@@ -183,6 +183,10 @@ bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size
 
 bool render_game(render_context* rctx, const game_state* gs)
 {
+    if (!set_color(rctx, rctx->colors.background)) {
+        fprintf(stderr, "set_color failed\n");
+        return false;
+    }
     if (SDL_RenderClear(rctx->renderer)) {
         fprintf(stderr, "SDL_RenderClear: %s\n",
                 SDL_GetError());
