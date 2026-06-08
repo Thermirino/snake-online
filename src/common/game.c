@@ -60,6 +60,7 @@ bool game_delete_snake(game_state* gs, uint32_t snake_id)
     for (size_t i = 0; i < gs->snakes_size; i++) {
         snake* sn = &gs->snakes[i];
         if (sn->id == snake_id) {
+            snake_destroy(sn);
             size_t n = gs->snakes_size - i - 1;
             memmove(&gs->snakes[i], &gs->snakes[i + 1], n * sizeof(snake));
 
