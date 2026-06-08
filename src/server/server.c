@@ -278,7 +278,8 @@ static bool process_clients(server_state* state,
         struct pollfd* pfds)
 {
     for (size_t i = 0; i < state->nclients; i++) {
-        if (pfds[i + 1].revents & POLLIN) {
+        if (pfds[i + 1].fd != -1 &&
+            pfds[i + 1].revents & POLLIN) {
             if (!process_client(state, &state->clients[i], &pfds[i + 1])) {
                 fprintf(stderr, "process client (fd = %d) failed\n", pfds[i + 1].fd);
             }

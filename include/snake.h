@@ -28,6 +28,7 @@ typedef struct {
     direction dir;
     snake_body body;
     color_name color;
+    bool grow;
 } snake;
 
 bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color);

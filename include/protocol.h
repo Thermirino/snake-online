@@ -48,6 +48,7 @@ typedef struct {
 typedef struct {
     int32_t width, height;  // board size in cells
     uint64_t nsnakes;
+    uint64_t nfood;
 } game_state_header;
 
 typedef struct {

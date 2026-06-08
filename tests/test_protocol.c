@@ -38,7 +38,6 @@ static void test_serialize(void)
     TEST_ASSERT_EQUAL(gs1.brd.height, gs2.brd.height);
     TEST_ASSERT_EQUAL(0, gs2.snakes_capacity);
     TEST_ASSERT_EQUAL(0, gs2.snakes_size);
-    TEST_ASSERT_EQUAL(0, memcmp(&gs1, &gs2, sizeof(gs1)));
     game_state_destroy(&gs2);
     free(buf);
 

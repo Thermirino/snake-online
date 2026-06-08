@@ -31,7 +31,7 @@ static void test_game_state(void)
     TEST_ASSERT_NULL(gs.snakes);
     TEST_ASSERT_EQUAL(0, gs.snakes_capacity);
     TEST_ASSERT_EQUAL(0, gs.snakes_size);
-    TEST_ASSERT_EQUAL(0, gs.next_snake_id);
+    TEST_ASSERT_EQUAL(1, gs.next_snake_id);
 
 
     snake s1;

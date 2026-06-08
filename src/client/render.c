@@ -40,6 +40,7 @@ bool render_init(render_context* rctx, int win_width, int win_height)
 
     rctx->colors.background = WHITE;
     rctx->colors.grid = BLACK;
+    rctx->colors.food = RED;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -181,6 +182,27 @@ bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size
     return true;
 }
 
+bool render_food(render_context* rctx, point* food, size_t size)
+{
+    if (!set_color(rctx, rctx->colors.food)) {
+        fprintf(stderr, "set_color failed\n");
+        return false;
+    }
+
+    SDL_Rect rect = { .x = 0, .y = 0,
+                      .w = rctx->cell_size, .h = rctx->cell_size };
+    for (size_t i = 0; i < size; i++) {
+        rect.x = food[i].x * rctx->cell_size;
+        rect.y = food[i].y * rctx->cell_size;
+        if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
+            fprintf(stderr, "SDL_RenderFillRect: %s\n",
+                    SDL_GetError());
+            return false;
+        }
+    }
+    return true;
+}
+
 bool render_game(render_context* rctx, const game_state* gs)
 {
     if (!set_color(rctx, rctx->colors.background)) {
@@ -194,6 +216,10 @@ bool render_game(render_context* rctx, const game_state* gs)
 
     if (!render_snakes(rctx, gs->snakes, gs->snakes_size)) {
         fprintf(stderr, "render_snakes failed\n");
+        return false;
+    }
+    if (!render_food(rctx, gs->food, gs->food_size)) {
+        fprintf(stderr, "render_food failed\n");
         return false;
     }
     if (!render_grid(rctx, &gs->brd)) {

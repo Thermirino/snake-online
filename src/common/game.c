@@ -4,6 +4,12 @@
 #include <string.h>
 #include <game.h>
 
+static bool move_snakes(game_state* gs);
+static bool add_food(game_state* gs);
+static bool remove_food(game_state* gs, size_t index);
+static bool check_food_collisions(game_state* gs);
+static bool spawn_food(game_state* gs);
+
 bool game_state_init(game_state* gs, int width, int height)
 {
     if (!gs || width <= 0 || height <= 0)
@@ -15,6 +21,10 @@ bool game_state_init(game_state* gs, int width, int height)
     gs->snakes = NULL;
     gs->snakes_capacity = 0;
     gs->snakes_size = 0;
+
+    gs->food = NULL;
+    gs->food_capacity = 0;
+    gs->food_size = 0;
 
     gs->next_snake_id = 1;
     return true;
@@ -31,6 +41,10 @@ void game_state_destroy(game_state* gs)
     free(gs->snakes);
     gs->snakes_capacity = 0;
     gs->snakes_size = 0;
+
+    free(gs->food);
+    gs->food_capacity = 0;
+    gs->food_size = 0;
 }
 
 bool game_state_add_snake(game_state* gs, snake* s)
@@ -84,6 +98,13 @@ bool game_check_collision(game_state* gs, point pos)
                 return true;
         }
     }
+
+    for (size_t i = 0; i < gs->food_size; i++) {
+        point* f = &gs->food[i];
+        if (f->x == pos.x &&
+            f->y == pos.y)
+            return true;
+    }
     return false;
 }
 
@@ -95,7 +116,7 @@ bool game_is_out_of_bounds(game_state* gs, point pos)
     return false;
 }
 
-bool game_find_free_place_for_snake(game_state* gs, point* pos)
+bool game_find_free_cell(game_state* gs, point* pos)
 {
     if (!gs || !pos)
         return false;
@@ -109,6 +130,32 @@ bool game_find_free_place_for_snake(game_state* gs, point* pos)
         }
     }
     return false;
+}
+
+bool game_find_random_free_cell(game_state* gs, point* pos)
+{
+    if (!gs || !pos)
+        return false;
+
+    pos->x = rand() % gs->brd.width;
+    pos->y = rand() % gs->brd.height;
+    while (game_check_collision(gs, *pos)) {
+        pos->x = rand() % gs->brd.width;
+        pos->y = rand() % gs->brd.height;
+    }
+    return true;
+}
+
+bool game_find_free_place_for_snake(game_state* gs, point* pos)
+{
+    if (!gs || !pos)
+        return false;
+
+    if (!game_find_free_cell(gs, pos)) {
+        fprintf(stderr, "game_find_free_cell failed\n");
+        return false;
+    }
+    return true;
 }
 
 bool game_add_player_snake(game_state* gs, uint32_t* snake_id)
@@ -179,6 +226,77 @@ static bool move_snakes(game_state* gs)
     return true;
 }
 
+static bool add_food(game_state* gs)
+{
+    if (gs->food_size == gs->food_capacity) {
+        size_t new_capacity = gs->food_capacity ? gs->food_capacity * 2 : 5;
+        point* p = realloc(gs->food, new_capacity * sizeof(*p));
+        if (!p) {
+            perror("malloc");
+            return false;
+        }
+        gs->food = p;
+        gs->food_capacity = new_capacity;
+    }
+
+    if (!game_find_random_free_cell(gs, &gs->food[gs->food_size])) {
+        fprintf(stderr, "game_find_random_free_cell failed\n");
+        return false;
+    }
+    gs->food_size++;
+
+    return true;
+}
+
+static bool remove_food(game_state* gs, size_t index)
+{
+    if (index >= gs->food_size) {
+        return false;
+    }
+
+    size_t n = gs->food_size - index - 1;
+    memmove(&gs->food[index], &gs->food[index + 1],
+            n * sizeof(point));
+    gs->food_size--;
+    return true;
+}
+
+static bool check_food_collisions(game_state* gs)
+{
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        snake* s = &gs->snakes[i];
+        point* head = &s->body.points[0];
+
+        size_t j = 0;
+        while (j < gs->food_size) {
+            point* food = &gs->food[j];
+            if (head->x == food->x &&
+                head->y == food->y) {
+                s->grow = true;
+
+                if (!remove_food(gs, j)) {
+                    fprintf(stderr, "remove_food failed\n");
+                }
+
+            } else
+                j++;
+        }
+
+    }
+    return true;
+}
+
+static bool spawn_food(game_state* gs)
+{
+    while (gs->food_size < gs->snakes_size) {
+        if (!add_food(gs)) {
+            fprintf(stderr, "add_food failed\n");
+            return false;
+        }
+    }
+    return true;
+}
+
 bool game_update(game_state* gs)
 {
     if (!gs)
@@ -188,5 +306,16 @@ bool game_update(game_state* gs)
         fprintf(stderr, "move_snakes failed\n");
         return false;
     }
+
+    if (!check_food_collisions(gs)) {
+        fprintf(stderr, "check_food_collisions failed\n");
+        return false;
+    }
+
+    if (!spawn_food(gs)) {
+        fprintf(stderr, "spawn_food failed\n");
+        return false;
+    }
+
     return true;
 }

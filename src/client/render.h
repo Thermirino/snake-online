@@ -10,6 +10,7 @@
 typedef struct {
     color_name background;
     color_name grid;
+    color_name food;
 } theme;
 
 typedef struct {
@@ -29,5 +30,6 @@ bool render_game(render_context* rctx, const game_state* gs);
 bool render_grid(render_context* rctx, const board* brd);
 bool render_snake(render_context* rctx, const snake* s);
 bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size);
+bool render_food(render_context* rctx, point* food, size_t size);
 
 #endif

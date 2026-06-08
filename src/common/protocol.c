@@ -33,11 +33,15 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
     if (!gs || !buf || !size)
         return false;
 
+    // calculate buffer size
     uint64_t buf_size = 0;
     buf_size += sizeof(game_state_header);
     for (size_t i = 0; i < gs->snakes_size; i++) {
         buf_size += sizeof(snake_header);
         buf_size += sizeof(point_data) * gs->snakes[i].body.size;
+    }
+    for (size_t i = 0; i < gs->food_size; i++) {
+        buf_size += sizeof(point_data);
     }
 
     *buf = malloc(buf_size);
@@ -51,9 +55,11 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
     ghdr.width = htobe32(gs->brd.width);
     ghdr.height = htobe32(gs->brd.height);
     ghdr.nsnakes = htobe64(gs->snakes_size);
+    ghdr.nfood = htobe64(gs->food_size);
     memcpy(p, &ghdr, sizeof(ghdr));
     p += sizeof(ghdr);
 
+    // serialize snakes
     snake_header shdr;
     for (size_t i = 0; i < gs->snakes_size; i++) {
         shdr.id = htobe32(gs->snakes[i].id);
@@ -70,6 +76,16 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
             memcpy(p, &pdata, sizeof(pdata));
             p += sizeof(pdata);
         }
+    }
+
+    // serialize food
+    point_data pdata;
+    for (size_t i = 0; i < gs->food_size; i++) {
+        pdata.y = htobe32(gs->food[i].y);
+        pdata.x = htobe32(gs->food[i].x);
+
+        memcpy(p, &pdata, sizeof(pdata));
+        p += sizeof(pdata);
     }
 
     if (p != *buf + buf_size)
@@ -93,17 +109,18 @@ bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
         return false;
     }
     memcpy(&ghdr, p, sizeof(ghdr));
+    p += sizeof(ghdr);
     gs->brd.width = be32toh(ghdr.width);
     gs->brd.height = be32toh(ghdr.height);
     gs->snakes_size = be64toh(ghdr.nsnakes);
-    p += sizeof(ghdr);
 
     gs->snakes_capacity = gs->snakes_size;
 
-    snake_header shdr;
+    // deserialize snakes
     if (gs->snakes_size == 0) {
         gs->snakes = NULL;
     } else {
+        snake_header shdr;
         gs->snakes = malloc(gs->snakes_capacity * sizeof(snake));
         if (!gs->snakes) {
             perror("malloc");
@@ -112,7 +129,7 @@ bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
 
         for (size_t i = 0; i < gs->snakes_size; i++) {
             if (p + sizeof(shdr) > end) {
-                fprintf(stderr, "Incorrect data\n");
+fprintf(stderr, "Incorrect data\n");
                 for (size_t k = 0; k < i; k++) {
                     free(gs->snakes[k].body.points);
                 }
@@ -121,12 +138,12 @@ bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
             }
 
             memcpy(&shdr, p, sizeof(shdr));
+            p += sizeof(shdr);
             gs->snakes[i].id = be32toh(shdr.id);
             gs->snakes[i].dir = be32toh(shdr.dir);
             gs->snakes[i].color = be32toh(shdr.color);
             gs->snakes[i].body.size = be64toh(shdr.npoints);
             gs->snakes[i].body.capacity = gs->snakes[i].body.size;
-            p += sizeof(shdr);
 
             gs->snakes[i].body.points = malloc(gs->snakes[i].body.size * sizeof(point));
             if (!gs->snakes[i].body.points) {
@@ -150,15 +167,48 @@ bool game_state_deserialize(uint8_t* data, size_t data_size, game_state* gs)
                 }
 
                 memcpy(&pdata, p, sizeof(pdata));
+                p += sizeof(pdata);
                 gs->snakes[i].body.points[j].y = be32toh(pdata.y);
                 gs->snakes[i].body.points[j].x = be32toh(pdata.x);
-                p += sizeof(pdata);
             }
         }
     }
 
+    // deserialize food
+    gs->food_size = be64toh(ghdr.nfood);
+    gs->food_capacity = gs->food_size;
+
+    gs->food = malloc(gs->food_capacity * sizeof(point));
+    if (!gs->food) {
+        perror("malloc");
+        for (size_t k = 0; k < gs->snakes_size; k++) {
+            free(gs->snakes[k].body.points);
+        }
+        free(gs->snakes);
+        return false;
+    }
+
+    point_data pdata;
+    for (size_t i = 0; i < gs->food_size; i++) {
+        if (p + sizeof(pdata) > end) {
+            fprintf(stderr, "Incorrect data\n");
+            free(gs->food);
+            for (size_t k = 0; k < i; k++) {
+                free(gs->snakes[k].body.points);
+            }
+            free(gs->snakes);
+            return false;
+        }
+
+        memcpy(&pdata, p, sizeof(pdata));
+        p += sizeof(pdata);
+        gs->food[i].y = be32toh(pdata.y);
+        gs->food[i].x = be32toh(pdata.x);
+    }
+
     if (p != data + data_size) {
         fprintf(stderr, "Incorrect data\n");
+        free(gs->food);
         for (size_t k = 0; k < gs->snakes_size; k++) {
             free(gs->snakes[k].body.points);
         }
