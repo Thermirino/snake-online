@@ -12,9 +12,11 @@
 #include "game.h"
 #include "server_internal.h"
 #include "protocol.h"
+#include "snake.h"
 
 static int open_listenfd(const char* port);
 static client* add_client(server_state* state, int clientfd);
+static client* find_client_by_snake_id(server_state* state, uint32_t snake_id);
 static bool remove_client(server_state* state, size_t index);
 static bool remove_disconnected_clients(server_state* state);
 static bool accept_connections(server_state* state, struct pollfd* pfds);
@@ -104,9 +106,19 @@ static client* add_client(server_state* state, int clientfd)
     }
     state->clients[state->nclients].fd = clientfd;
     state->clients[state->nclients].status = CLIENT_CONNECTING;
-    state->clients[state->nclients].snake_id = 0;
+    state->clients[state->nclients].snake_id = SNAKE_ID_INVALID;
     state->nclients++;
     return &state->clients[state->nclients - 1];
+}
+
+static client* find_client_by_snake_id(server_state* state, uint32_t snake_id)
+{
+    for (size_t i = 0; i < state->nclients; i++) {
+        if (state->clients[i].snake_id == snake_id) {
+            return &state->clients[i];
+        }
+    }
+    return NULL;
 }
 
 static bool remove_client(server_state* state, size_t index)
@@ -129,7 +141,7 @@ static bool remove_disconnected_clients(server_state* state)
         if (cl->status == CLIENT_DISCONNECTED) {
 
             if (cl->snake_id != 0) {
-                if (!game_delete_snake(&state->gs, cl->snake_id)) {
+                if (!game_delete_snake_by_id(&state->gs, cl->snake_id)) {
                     fprintf(stderr, "game_delete_snake failed\n");
                     return false;
                 }
@@ -227,7 +239,9 @@ static bool handle_packet(server_state* state,
             }
             break;
         case PT_INPUT:
-            ;
+            if (client->snake_id == SNAKE_ID_INVALID)
+                return true;
+
             input_payload* input = payload;
             if (!game_change_snake_direction(&state->gs, client->snake_id, be32toh(input->dir))) {
                     fprintf(stderr, "game_change_snake_direction failed\n");
@@ -284,6 +298,25 @@ static bool process_clients(server_state* state,
                 fprintf(stderr, "process client (fd = %d) failed\n", pfds[i + 1].fd);
             }
         }
+    }
+    return true;
+}
+
+static bool process_dead_players(server_state* state, uint32_t* dead_snake_ids, size_t ndead)
+{
+    for (size_t i = 0; i < ndead; i++) {
+        client* cl = find_client_by_snake_id(state, dead_snake_ids[i]);
+        if (!cl) {
+            fprintf(stderr, "find_client_by_snake_id failed\n");
+            return false;
+        }
+
+        if (!send_packet(cl->fd, PT_GAME_OVER, NULL, 0)) {
+            fprintf(stderr, "send_packet failed\n");
+            return false;
+        }
+
+        cl->snake_id = 0;
     }
     return true;
 }
@@ -380,11 +413,22 @@ bool server_run(const char* port, int width, int height)
 
         cur_time = get_time_ms();
         if (cur_time - last_update_time >= TICK_MS) {
-            if (!game_update(&state.gs)) {
+            uint32_t* dead_snake_ids;
+            size_t ndead;
+            if (!game_update(&state.gs, &dead_snake_ids, &ndead)) {
                 fprintf(stderr, "game_update failed\n");
                 rc = false;
                 break;
             }
+
+            if (!process_dead_players(&state, dead_snake_ids, ndead)) {
+                fprintf(stderr, "process_dead_players failed\n");
+                rc = false;
+                break;
+            }
+            if (ndead)
+                free(dead_snake_ids);
+
 
             if (!broadcast_game_state(&state)) {
                 fprintf(stderr, "broadcast_game_state failed\n");

@@ -21,6 +21,8 @@ const char* packet_type_str(packet_type ptype)
             return "PT_INPUT";
         case PT_GAME_STATE:
             return "PT_GAME_STATE";
+        case PT_GAME_OVER:
+            return "PT_GAME_OVER";
         case PT_DISCONNECT:
             return "PT_DISCONNECT";
         default:

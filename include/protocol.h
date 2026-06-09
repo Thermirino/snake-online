@@ -23,6 +23,7 @@ typedef enum {
     PT_CONNECT_ACK,
     PT_INPUT, 
     PT_GAME_STATE,
+    PT_GAME_OVER,
     PT_DISCONNECT,
 
     PT_COUNT

@@ -115,6 +115,8 @@ static bool handle_packet(client_state* state,
             state->gs = new_gs;
 
             break;
+        case PT_GAME_OVER:
+            break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",
                     ptype);

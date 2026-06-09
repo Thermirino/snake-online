@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <color.h>
 
+#define SNAKE_ID_INVALID    0
+
 typedef enum {
     DIR_UP = 0,
     DIR_RIGHT,

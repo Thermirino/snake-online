@@ -66,7 +66,24 @@ bool game_state_add_snake(game_state* gs, snake* s)
     return true;
 }
 
-bool game_delete_snake(game_state* gs, uint32_t snake_id)
+bool game_delete_snake_by_index(game_state* gs, size_t index)
+{
+    if (index >= gs->snakes_size) {
+        return false;
+    }
+
+    snake* sn = &gs->snakes[index];
+    snake_destroy(sn);
+
+    size_t n = gs->snakes_size - index - 1;
+    memmove(&gs->snakes[index], &gs->snakes[index + 1], n * sizeof(snake));
+
+    gs->snakes_size--;
+
+    return true;
+}
+
+bool game_delete_snake_by_id(game_state* gs, uint32_t snake_id)
 {
     if (!gs)
         return false;
@@ -74,11 +91,10 @@ bool game_delete_snake(game_state* gs, uint32_t snake_id)
     for (size_t i = 0; i < gs->snakes_size; i++) {
         snake* sn = &gs->snakes[i];
         if (sn->id == snake_id) {
-            snake_destroy(sn);
-            size_t n = gs->snakes_size - i - 1;
-            memmove(&gs->snakes[i], &gs->snakes[i + 1], n * sizeof(snake));
-
-            gs->snakes_size--;
+            if (!game_delete_snake_by_index(gs, i)) {
+                fprintf(stderr, "game_delete_snake_by_index failed\n");
+                return false;
+            }
             return true;
         }
     }
@@ -288,7 +304,7 @@ static bool check_food_collisions(game_state* gs)
 
 static bool spawn_food(game_state* gs)
 {
-    while (gs->food_size < gs->snakes_size) {
+    while (gs->food_size < gs->snakes_size * FOOD_PER_SNAKE) {
         if (!add_food(gs)) {
             fprintf(stderr, "add_food failed\n");
             return false;
@@ -297,13 +313,91 @@ static bool spawn_food(game_state* gs)
     return true;
 }
 
-bool game_update(game_state* gs)
+static bool check_snake_collisions(game_state* gs,
+                                   uint32_t** dead_snake_ids,
+                                   size_t* ndead)
+{
+    *dead_snake_ids = malloc(gs->snakes_size * sizeof(uint32_t));
+    if (!*dead_snake_ids) {
+        perror("malloc");
+        return false;
+    }
+    *ndead = 0;
+
+    bool dead;
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        dead = false;
+        snake* s1 = &gs->snakes[i];
+        point* head = &s1->body.points[0];
+
+        // out of bounds
+        if (game_is_out_of_bounds(gs, *head)) {
+            (*dead_snake_ids)[(*ndead)++] = s1->id;
+            dead = true;
+            continue;
+        }
+
+        // collision with itself
+        for (size_t j = 1; j < s1->body.size; j++) {
+            if (s1->body.points[j].x == head->x &&
+                s1->body.points[j].y == head->y) {
+                (*dead_snake_ids)[(*ndead)++] = s1->id;
+                dead = true;
+                break;
+            }
+        }
+        if (dead)
+            continue;
+
+        // collision with other snakes
+        for (size_t j = 0; j < gs->snakes_size; j++) {
+            snake* s2 = &gs->snakes[j];
+            if (s1 == s2)
+                continue;
+
+            for (size_t k = 0; k < s2->body.size; k++) {
+                if (head->x == s2->body.points[k].x &&
+                    head->y == s2->body.points[k].y) {
+                    (*dead_snake_ids)[(*ndead)++] = s1->id;
+                    dead = true;
+                    break;
+                }
+            }
+
+            if (dead)
+                break;
+        }
+    }
+
+    for (size_t i = 0; i < *ndead; i++) {
+        if (!game_delete_snake_by_id(gs, (*dead_snake_ids)[i])) {
+            fprintf(stderr, "game_delete_snake_by_id failed\n");
+            free(*dead_snake_ids);
+            *ndead = 0;
+            return false;
+        }
+    }
+
+    if (*ndead == 0)
+        free(*dead_snake_ids);
+
+    return true;
+}
+
+bool game_update(game_state* gs,
+                 uint32_t** dead_snake_ids,
+                 size_t* ndead)
 {
     if (!gs)
         return false;
 
     if (!move_snakes(gs)) {
         fprintf(stderr, "move_snakes failed\n");
+        return false;
+    }
+
+    if (!check_snake_collisions(gs, dead_snake_ids, ndead)) {
+        fprintf(stderr, "check_snake_collisions failed\n");
         return false;
     }
 
