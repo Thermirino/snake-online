@@ -302,7 +302,11 @@ static bool check_food_collisions(game_state* gs)
 
 static bool spawn_food(game_state* gs)
 {
-    while (gs->food_size < gs->snakes_size * FOOD_PER_SNAKE) {
+    size_t amount = gs->brd.height * gs->brd.width * FOOD_PERCENT / 100;
+    if (amount < MIN_FOOD_COUNT)
+        amount = MIN_FOOD_COUNT;
+
+    while (gs->food_size < amount) {
         if (!add_food(gs)) {
             fprintf(stderr, "add_food failed\n");
             return false;

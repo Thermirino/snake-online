@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <snake.h>
 
-#define FOOD_PER_SNAKE      8
+#define FOOD_PERCENT    5
+#define MIN_FOOD_COUNT  1
 
 typedef struct {
     int width, height;      // in cells
