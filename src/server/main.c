@@ -9,8 +9,8 @@ int main(int argc, char* argv[])
         return -1;
     }
 
-    int width = 50;
-    int height = 40;
+    int width = 100;
+    int height = 100;
     if (!server_run(argv[1], width, height))
         return -1;
     return 0;

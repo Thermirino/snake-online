@@ -45,6 +45,8 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->camera_w = rctx->win_width / rctx->cell_size;
     rctx->camera_h = rctx->win_height / rctx->cell_size;
 
+    rctx->zoom = 1.0;
+
     rctx->colors.background = WHITE;
     rctx->colors.grid = BLACK;
     rctx->colors.food = RED;
@@ -137,16 +139,19 @@ bool render_grid(render_context* rctx, const board* brd)
         fprintf(stderr, "set_color failed\n");
         return false;
     }
+
+    int scaled_cell_size = rctx->cell_size * rctx->zoom;
     SDL_Rect rect = { .x = 0, .y = 0,
-                      .w = rctx->cell_size, .h = rctx->cell_size };
+                      .w = scaled_cell_size, .h = scaled_cell_size };
     for (int cy = rctx->camera_y; cy <= rctx->camera_y + rctx->camera_h; cy++) {
         for (int cx = rctx->camera_x; cx <= rctx->camera_x + rctx->camera_w; cx++) {
+
             if (cy < 0 || cx < 0 ||
                 cy >= brd->height || cx >= brd->width)
                 continue;
 
-            rect.x = (cx - rctx->camera_x) * rctx->cell_size;
-            rect.y = (cy - rctx->camera_y) * rctx->cell_size;
+            rect.x = (cx - rctx->camera_x) * scaled_cell_size;
+            rect.y = (cy - rctx->camera_y) * scaled_cell_size;
             if (SDL_RenderDrawRect(rctx->renderer, &rect) < 0) {
                 fprintf(stderr, "SDL_RenderDrawRect: %s\n",
                         SDL_GetError());
@@ -166,12 +171,14 @@ bool render_snake(render_context* rctx, const snake* s)
         fprintf(stderr, "set_color failed\n");
         return false;
     }
+
+    int scaled_cell_size = rctx->cell_size * rctx->zoom;
     SDL_Rect rect = { .x = 0, .y = 0,
-                      .w = rctx->cell_size, .h = rctx->cell_size };
+                      .w = scaled_cell_size, .h = scaled_cell_size };
     for (size_t i = 0; i < s->body.size; i++) {
         point* p = &s->body.points[i];
-        rect.x = (p->x - rctx->camera_x) * rctx->cell_size;
-        rect.y = (p->y - rctx->camera_y) * rctx->cell_size;
+        rect.x = (p->x - rctx->camera_x) * scaled_cell_size;
+        rect.y = (p->y - rctx->camera_y) * scaled_cell_size;
 
         if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
@@ -201,11 +208,12 @@ bool render_food(render_context* rctx, point* food, size_t size)
         return false;
     }
 
+    int scaled_cell_size = rctx->cell_size * rctx->zoom;
     SDL_Rect rect = { .x = 0, .y = 0,
-                      .w = rctx->cell_size, .h = rctx->cell_size };
+                      .w = scaled_cell_size, .h = scaled_cell_size };
     for (size_t i = 0; i < size; i++) {
-        rect.x = (food[i].x - rctx->camera_x) * rctx->cell_size;
-        rect.y = (food[i].y - rctx->camera_y) * rctx->cell_size;
+        rect.x = (food[i].x - rctx->camera_x) * scaled_cell_size;
+        rect.y = (food[i].y - rctx->camera_y) * scaled_cell_size;
 
         if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
@@ -222,6 +230,10 @@ static void center_camera(render_context* rctx, const game_state* gs, uint32_t s
     if (!s) {
         return;
     }
+
+    int scaled_cell_size = rctx->cell_size * rctx->zoom;
+    rctx->camera_w = rctx->win_width  / scaled_cell_size;
+    rctx->camera_h = rctx->win_height / scaled_cell_size;
     
     rctx->camera_y = s->body.points[0].y - rctx->camera_h / 2;
     rctx->camera_x = s->body.points[0].x - rctx->camera_w / 2;
@@ -235,6 +247,16 @@ static void center_camera(render_context* rctx, const game_state* gs, uint32_t s
         rctx->camera_x = -BORDER_SIZE;
     else if (rctx->camera_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
         rctx->camera_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
+}
+
+void render_set_zoom(render_context* rctx, double zoom)
+{
+    if (zoom < MIN_ZOOM)
+        zoom = MIN_ZOOM;
+    if (zoom > MAX_ZOOM)
+        zoom = MAX_ZOOM;
+
+    rctx->zoom = zoom;
 }
 
 bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id)

@@ -2,6 +2,7 @@
 #include <SDL_events.h>
 #include <protocol.h>
 #include "input.h"
+#include "render.h"
 #include "snake.h"
 
 bool process_input(client_state* state, bool* quit)
@@ -35,6 +36,14 @@ bool process_input(client_state* state, bool* quit)
                     dir = DIR_LEFT;
                     change_direction = true;
                 }
+                break;
+            case SDL_MOUSEWHEEL:
+                if (event.wheel.y > 0)
+                    render_set_zoom(&state->rctx, state->rctx.zoom * 1.1);
+                else if (event.wheel.y < 0)
+                    render_set_zoom(&state->rctx, state->rctx.zoom / 1.1);
+
+                break;
         }
     }
 
