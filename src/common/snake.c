@@ -17,6 +17,7 @@ bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color)
         return false;
     }
     s->dir = dir;
+    s->last_move_dir = DIR_NONE;
 
     s->body.size = 1;
     s->body.capacity = 3;
@@ -90,6 +91,8 @@ bool snake_move(snake* s)
     }
     s->body.points[0].y += off_y;
     s->body.points[0].x += off_x;
+
+    s->last_move_dir = s->dir;
     return true;
 }
 
@@ -97,6 +100,21 @@ bool snake_change_direction(snake* s, direction dir)
 {
     if (!s || dir < 0 || dir > 3)
         return false;
+
+    if (s->body.size > 1) {
+        if (s->last_move_dir == DIR_UP &&
+            dir == DIR_DOWN)
+            return false;
+        else if (s->last_move_dir == DIR_DOWN &&
+                 dir == DIR_UP)
+            return false;
+        else if (s->last_move_dir == DIR_LEFT &&
+                 dir == DIR_RIGHT)
+            return false;
+        else if (s->last_move_dir == DIR_RIGHT &&
+                 dir == DIR_LEFT)
+            return false;
+    }
 
     s->dir = dir;
     return true;

@@ -12,7 +12,8 @@ typedef enum {
     DIR_UP = 0,
     DIR_RIGHT,
     DIR_DOWN,
-    DIR_LEFT
+    DIR_LEFT,
+    DIR_NONE
 } direction;
 
 typedef struct {
@@ -28,6 +29,7 @@ typedef struct {
 typedef struct {
     uint32_t id;
     direction dir;
+    direction last_move_dir;
     snake_body body;
     color_name color;
     bool grow;
