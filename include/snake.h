@@ -17,7 +17,7 @@ typedef enum {
 } direction;
 
 typedef struct {
-    int y, x;
+    int y, x;                   // in cells
 } point;
 
 typedef struct {

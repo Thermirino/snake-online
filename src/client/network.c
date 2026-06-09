@@ -6,6 +6,7 @@
 #include <netdb.h>
 #include "network.h"
 #include "game.h"
+#include "snake.h"
 #include <protocol.h>
 
 static int open_clientfd(const char* hostname, const char* port)
@@ -116,6 +117,7 @@ static bool handle_packet(client_state* state,
 
             break;
         case PT_GAME_OVER:
+            state->snake_id = SNAKE_ID_INVALID;
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",

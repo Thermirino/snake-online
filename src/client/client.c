@@ -62,7 +62,7 @@ bool client_run(const char* hostname, const char* port)
             SDL_Delay(TICKS_PER_FRAME - frame_time);
         }
 
-        if (!render_game(&state.rctx, &state.gs)) {
+        if (!render_game(&state.rctx, &state.gs, state.snake_id)) {
             fprintf(stderr, "render_game failed\n");
             rc = false;
             break;

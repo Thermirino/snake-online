@@ -2,6 +2,8 @@
 #include <SDL_render.h>
 #include <stdlib.h>
 #include "render.h"
+#include "game.h"
+#include "snake.h"
 
 static const SDL_Color colors[] = {
     { 233, 216, 166, 255 },
@@ -37,6 +39,11 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->win_height = win_height;
     rctx->text_font_size = win_height / 20;
     rctx->cell_size = win_height / 20;
+
+    rctx->camera_y = 0;
+    rctx->camera_x = 0;
+    rctx->camera_w = rctx->win_width / rctx->cell_size;
+    rctx->camera_h = rctx->win_height / rctx->cell_size;
 
     rctx->colors.background = WHITE;
     rctx->colors.grid = BLACK;
@@ -132,10 +139,14 @@ bool render_grid(render_context* rctx, const board* brd)
     }
     SDL_Rect rect = { .x = 0, .y = 0,
                       .w = rctx->cell_size, .h = rctx->cell_size };
-    for (int cy = 0; cy < brd->height; cy++) {
-        for (int cx = 0; cx < brd->width; cx++) {
-            rect.x = cx * rctx->cell_size;
-            rect.y = cy * rctx->cell_size;
+    for (int cy = rctx->camera_y; cy <= rctx->camera_y + rctx->camera_h; cy++) {
+        for (int cx = rctx->camera_x; cx <= rctx->camera_x + rctx->camera_w; cx++) {
+            if (cy < 0 || cx < 0 ||
+                cy >= brd->height || cx >= brd->width)
+                continue;
+
+            rect.x = (cx - rctx->camera_x) * rctx->cell_size;
+            rect.y = (cy - rctx->camera_y) * rctx->cell_size;
             if (SDL_RenderDrawRect(rctx->renderer, &rect) < 0) {
                 fprintf(stderr, "SDL_RenderDrawRect: %s\n",
                         SDL_GetError());
@@ -159,8 +170,9 @@ bool render_snake(render_context* rctx, const snake* s)
                       .w = rctx->cell_size, .h = rctx->cell_size };
     for (size_t i = 0; i < s->body.size; i++) {
         point* p = &s->body.points[i];
-        rect.x = p->x * rctx->cell_size;
-        rect.y = p->y * rctx->cell_size;
+        rect.x = (p->x - rctx->camera_x) * rctx->cell_size;
+        rect.y = (p->y - rctx->camera_y) * rctx->cell_size;
+
         if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
                     SDL_GetError());
@@ -192,8 +204,9 @@ bool render_food(render_context* rctx, point* food, size_t size)
     SDL_Rect rect = { .x = 0, .y = 0,
                       .w = rctx->cell_size, .h = rctx->cell_size };
     for (size_t i = 0; i < size; i++) {
-        rect.x = food[i].x * rctx->cell_size;
-        rect.y = food[i].y * rctx->cell_size;
+        rect.x = (food[i].x - rctx->camera_x) * rctx->cell_size;
+        rect.y = (food[i].y - rctx->camera_y) * rctx->cell_size;
+
         if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
                     SDL_GetError());
@@ -203,7 +216,28 @@ bool render_food(render_context* rctx, point* food, size_t size)
     return true;
 }
 
-bool render_game(render_context* rctx, const game_state* gs)
+static void center_camera(render_context* rctx, const game_state* gs, uint32_t snake_id)
+{
+    snake* s = game_find_snake((game_state*)gs, snake_id);
+    if (!s) {
+        return;
+    }
+    
+    rctx->camera_y = s->body.points[0].y - rctx->camera_h / 2;
+    rctx->camera_x = s->body.points[0].x - rctx->camera_w / 2;
+
+    if (rctx->camera_y < -BORDER_SIZE)
+        rctx->camera_y = -BORDER_SIZE;
+    else if (rctx->camera_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
+        rctx->camera_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
+
+    if (rctx->camera_x < -BORDER_SIZE)
+        rctx->camera_x = -BORDER_SIZE;
+    else if (rctx->camera_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
+        rctx->camera_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
+}
+
+bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id)
 {
     if (!set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -213,6 +247,12 @@ bool render_game(render_context* rctx, const game_state* gs)
         fprintf(stderr, "SDL_RenderClear: %s\n",
                 SDL_GetError());
     }
+
+    if (snake_id == SNAKE_ID_INVALID &&
+        gs->snakes_size) {
+        snake_id = gs->snakes[0].id;
+    }
+    center_camera(rctx, gs, snake_id);
 
     if (!render_snakes(rctx, gs->snakes, gs->snakes_size)) {
         fprintf(stderr, "render_snakes failed\n");

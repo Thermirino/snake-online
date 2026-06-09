@@ -119,7 +119,7 @@ void test_render_game(void)
     render_context rctx;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
-    TEST_ASSERT_TRUE(render_game(&rctx, &gs));
+    TEST_ASSERT_TRUE(render_game(&rctx, &gs, 0));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }
