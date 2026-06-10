@@ -42,10 +42,11 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->text_font_size = win_height / 20;
     rctx->cell_size = win_height / 20;
 
-    rctx->camera_y = 0;
-    rctx->camera_x = 0;
+    rctx->camera_y = 0.0;
+    rctx->camera_x = 0.0;
     rctx->camera_w = rctx->win_width / rctx->cell_size;
     rctx->camera_h = rctx->win_height / rctx->cell_size;
+    rctx->smoothness = CAM_SMOOTHNESS;
 
     rctx->zoom = 1.0;
 
@@ -142,8 +143,8 @@ bool render_grid(render_context* rctx, const board* brd)
         return false;
     }
 
-    int scaled_cell_size = rctx->cell_size * rctx->zoom;
-    SDL_Rect rect = { .x = 0, .y = 0,
+    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
     for (int cy = rctx->camera_y; cy <= rctx->camera_y + rctx->camera_h; cy++) {
         for (int cx = rctx->camera_x; cx <= rctx->camera_x + rctx->camera_w; cx++) {
@@ -154,7 +155,7 @@ bool render_grid(render_context* rctx, const board* brd)
 
             rect.x = (cx - rctx->camera_x) * scaled_cell_size;
             rect.y = (cy - rctx->camera_y) * scaled_cell_size;
-            if (SDL_RenderDrawRect(rctx->renderer, &rect) < 0) {
+            if (SDL_RenderDrawRectF(rctx->renderer, &rect) < 0) {
                 fprintf(stderr, "SDL_RenderDrawRect: %s\n",
                         SDL_GetError());
                 return false;
@@ -174,15 +175,15 @@ bool render_snake(render_context* rctx, const snake* s)
         return false;
     }
 
-    int scaled_cell_size = rctx->cell_size * rctx->zoom;
-    SDL_Rect rect = { .x = 0, .y = 0,
+    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
     for (size_t i = 0; i < s->body.size; i++) {
         point* p = &s->body.points[i];
         rect.x = (p->x - rctx->camera_x) * scaled_cell_size;
         rect.y = (p->y - rctx->camera_y) * scaled_cell_size;
 
-        if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
+        if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
                     SDL_GetError());
             return false;
@@ -210,14 +211,14 @@ bool render_food(render_context* rctx, point* food, size_t size)
         return false;
     }
 
-    int scaled_cell_size = rctx->cell_size * rctx->zoom;
-    SDL_Rect rect = { .x = 0, .y = 0,
+    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
     for (size_t i = 0; i < size; i++) {
         rect.x = (food[i].x - rctx->camera_x) * scaled_cell_size;
         rect.y = (food[i].y - rctx->camera_y) * scaled_cell_size;
 
-        if (SDL_RenderFillRect(rctx->renderer, &rect) < 0) {
+        if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
                     SDL_GetError());
             return false;
@@ -233,33 +234,38 @@ static void center_camera(render_context* rctx, const game_state* gs, uint32_t s
         return;
     }
 
-    if (rctx->camera_w >= gs->brd.width + BORDER_SIZE * 2) {
-        rctx->camera_x = -(rctx->camera_w - gs->brd.width) / 2;
-    } else {
-        rctx->camera_x = s->body.points[0].x - rctx->camera_w / 2;
+    double target_x;
+    double target_y;
 
-        if (rctx->camera_x < -BORDER_SIZE)
-            rctx->camera_x = -BORDER_SIZE;
-        else if (rctx->camera_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
-            rctx->camera_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
+    if (rctx->camera_w >= gs->brd.width + BORDER_SIZE * 2) {
+        target_x = -(rctx->camera_w - gs->brd.width) / 2.0;
+    } else {
+        target_x = s->body.points[0].x - rctx->camera_w / 2.0;
+
+        if (target_x < -BORDER_SIZE)
+            target_x = -BORDER_SIZE;
+        else if (target_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
+            target_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
     }
     
     if (rctx->camera_h >= gs->brd.height + BORDER_SIZE * 2) {
-        rctx->camera_y = -(rctx->camera_h - gs->brd.height) / 2;
+        target_y = -(rctx->camera_h - gs->brd.height) / 2.0;
     } else {
-        rctx->camera_y = s->body.points[0].y - rctx->camera_h / 2;
+        target_y = s->body.points[0].y - rctx->camera_h / 2.0;
 
-        if (rctx->camera_y < -BORDER_SIZE)
-            rctx->camera_y = -BORDER_SIZE;
-        else if (rctx->camera_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
-            rctx->camera_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
+        if (target_y < -BORDER_SIZE)
+            target_y = -BORDER_SIZE;
+        else if (target_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
+            target_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
     }
 
+    rctx->camera_x += (target_x - rctx->camera_x) * rctx->smoothness;
+    rctx->camera_y += (target_y - rctx->camera_y) * rctx->smoothness;
 }
 
 static void update_camera_size(render_context* rctx)
 {
-    int scaled_cell_size = rctx->cell_size * rctx->zoom;
+    double scaled_cell_size = rctx->cell_size * rctx->zoom;
     rctx->camera_w = rctx->win_width  / scaled_cell_size;
     rctx->camera_h = rctx->win_height / scaled_cell_size;
 }
