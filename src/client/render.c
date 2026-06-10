@@ -1,5 +1,6 @@
 #include <SDL_error.h>
 #include <SDL_render.h>
+#include <SDL_ttf.h>
 #include <stdlib.h>
 #include "render.h"
 #include "game.h"
@@ -19,6 +20,7 @@ static const SDL_Color colors[] = {
 /* prototypes of static functions */
 static SDL_Color get_color(color_name cname);
 static bool set_color(render_context* rs, color_name cname);
+static void update_camera_size(render_context* rctx);
 
 bool render_init(render_context* rctx, int win_width, int win_height)
 {
@@ -231,22 +233,35 @@ static void center_camera(render_context* rctx, const game_state* gs, uint32_t s
         return;
     }
 
+    if (rctx->camera_w >= gs->brd.width + BORDER_SIZE * 2) {
+        rctx->camera_x = -(rctx->camera_w - gs->brd.width) / 2;
+    } else {
+        rctx->camera_x = s->body.points[0].x - rctx->camera_w / 2;
+
+        if (rctx->camera_x < -BORDER_SIZE)
+            rctx->camera_x = -BORDER_SIZE;
+        else if (rctx->camera_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
+            rctx->camera_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
+    }
+    
+    if (rctx->camera_h >= gs->brd.height + BORDER_SIZE * 2) {
+        rctx->camera_y = -(rctx->camera_h - gs->brd.height) / 2;
+    } else {
+        rctx->camera_y = s->body.points[0].y - rctx->camera_h / 2;
+
+        if (rctx->camera_y < -BORDER_SIZE)
+            rctx->camera_y = -BORDER_SIZE;
+        else if (rctx->camera_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
+            rctx->camera_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
+    }
+
+}
+
+static void update_camera_size(render_context* rctx)
+{
     int scaled_cell_size = rctx->cell_size * rctx->zoom;
     rctx->camera_w = rctx->win_width  / scaled_cell_size;
     rctx->camera_h = rctx->win_height / scaled_cell_size;
-    
-    rctx->camera_y = s->body.points[0].y - rctx->camera_h / 2;
-    rctx->camera_x = s->body.points[0].x - rctx->camera_w / 2;
-
-    if (rctx->camera_y < -BORDER_SIZE)
-        rctx->camera_y = -BORDER_SIZE;
-    else if (rctx->camera_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
-        rctx->camera_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
-
-    if (rctx->camera_x < -BORDER_SIZE)
-        rctx->camera_x = -BORDER_SIZE;
-    else if (rctx->camera_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
-        rctx->camera_x = gs->brd.width - rctx->camera_w - 1 + BORDER_SIZE;
 }
 
 void render_set_zoom(render_context* rctx, double zoom)
@@ -257,6 +272,25 @@ void render_set_zoom(render_context* rctx, double zoom)
         zoom = MAX_ZOOM;
 
     rctx->zoom = zoom;
+
+    update_camera_size(rctx);
+}
+
+bool render_resize_window(render_context* rctx, int win_width, int win_height)
+{
+    rctx->win_width = win_width;
+    rctx->win_height = win_height;
+    rctx->text_font_size = win_height / 20;
+
+    update_camera_size(rctx);
+
+    TTF_CloseFont(rctx->text_font);
+    rctx->text_font = TTF_OpenFont("assets/fonts/sans.ttf", rctx->text_font_size);
+    if (rctx->text_font == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        return false;
+    }
+    return true;
 }
 
 bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id)

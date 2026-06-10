@@ -43,5 +43,6 @@ bool render_snake(render_context* rctx, const snake* s);
 bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size);
 bool render_food(render_context* rctx, point* food, size_t size);
 void render_set_zoom(render_context* rctx, double zoom);
+bool render_resize_window(render_context* rctx, int win_width, int win_height);
 
 #endif

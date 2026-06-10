@@ -1,5 +1,6 @@
 #include <SDL.h>
 #include <SDL_events.h>
+#include <SDL_video.h>
 #include <protocol.h>
 #include "input.h"
 #include "render.h"
@@ -43,6 +44,16 @@ bool process_input(client_state* state, bool* quit)
                 else if (event.wheel.y < 0)
                     render_set_zoom(&state->rctx, state->rctx.zoom / 1.1);
 
+                break;
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+                    int width = event.window.data1;
+                    int height = event.window.data2;
+                    if (!render_resize_window(&state->rctx, width, height)) {
+                        fprintf(stderr, "render_resize_window failed\n");
+                        return false;
+                    }
+                }
                 break;
         }
     }
