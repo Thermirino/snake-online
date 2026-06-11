@@ -10,6 +10,7 @@
 typedef struct {
     int sockfd;
 
+    uint64_t server_tick_ms;
     uint32_t snake_id;
 
     game_state gs;

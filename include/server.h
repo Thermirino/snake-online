@@ -3,8 +3,6 @@
 
 #include <stdbool.h>
 
-#define TICK_MS                     300
-
 bool server_run(const char* port, int width, int height);
 
 #endif

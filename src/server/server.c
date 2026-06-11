@@ -230,6 +230,7 @@ static bool handle_packet(server_state* state,
 
             connect_ack_payload ack;
             ack.snake_id = htobe32(snake_id);
+            ack.server_tick_ms = htobe64(TICK_MS);
             if (!send_packet(client->fd,
                              PT_CONNECT_ACK,
                              &ack,

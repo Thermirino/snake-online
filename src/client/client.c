@@ -1,7 +1,6 @@
 #include <SDL_stdinc.h>
 #include <client.h>
 #include <SDL_timer.h>
-#include <server.h>
 #include "game.h"
 #include "input.h"
 #include "network.h"
@@ -71,7 +70,7 @@ bool client_run(const char* hostname, const char* port)
         }
 
         state.time_since_last_tick += dt;
-        double tick_duration_sec = TICK_MS / 1000.0;
+        double tick_duration_sec = state.server_tick_ms / 1000.0;
         double interp_factor = state.time_since_last_tick / tick_duration_sec;
         if (interp_factor > 1.5)
             interp_factor = 1.0;

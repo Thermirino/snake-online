@@ -38,6 +38,7 @@ typedef struct {
 /* PT_CONNECT_ACK payload */
 typedef struct {
     uint32_t snake_id;
+    uint64_t server_tick_ms;
 } connect_ack_payload;
 
 /* PT_INPUT payload */

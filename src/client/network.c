@@ -4,7 +4,6 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <server.h>
 #include "network.h"
 #include "game.h"
 #include "snake.h"
@@ -83,6 +82,7 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
 
     connect_ack_payload* ack = payload;
     state->snake_id = be32toh(ack->snake_id);
+    state->server_tick_ms = be64toh(ack->server_tick_ms);
     free(payload);
 
     return true;
