@@ -12,7 +12,7 @@ static bool spawn_food(game_state* gs);
 
 bool game_state_init(game_state* gs, int width, int height)
 {
-    if (!gs || width <= 0 || height <= 0)
+    if (!gs)
         return false;
 
     gs->brd.width = width;

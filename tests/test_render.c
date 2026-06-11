@@ -54,7 +54,7 @@ void test_render_snake(void)
     TEST_ASSERT_NOT_NULL(rctx.window);
     TEST_ASSERT_NOT_NULL(rctx.renderer);
     TEST_ASSERT_NOT_NULL(rctx.text_font);
-    TEST_ASSERT_TRUE(render_snake(&rctx, &sn));
+    TEST_ASSERT_TRUE(render_snake(&rctx, &sn, NULL, 0.0));
     TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
@@ -83,7 +83,7 @@ void test_render_snakes(void)
     render_context rctx;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
-    TEST_ASSERT_TRUE(render_snakes(&rctx, snakes, sizeof(snakes)/sizeof(*snakes)));
+    TEST_ASSERT_TRUE(render_snakes(&rctx, snakes, sizeof(snakes)/sizeof(*snakes), NULL, 0, 0.0));
     TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
@@ -116,11 +116,11 @@ void test_render_game(void)
         .snakes_capacity = 3,
         .snakes_size = 3
     };
+    game_state prev_gs = gs;
     render_context rctx;
 
-    double dt = 0;
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
-    TEST_ASSERT_TRUE(render_game(&rctx, &gs, 0, dt));
+    TEST_ASSERT_TRUE(render_game(&rctx, &gs, &prev_gs, 1, 0.0, 0.0));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }

@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <server.h>
 #include "network.h"
 #include "game.h"
 #include "snake.h"
@@ -112,8 +113,11 @@ static bool handle_packet(client_state* state,
                 return false;
             }
 
-            game_state_destroy(&state->gs);
+            game_state_destroy(&state->prev_gs);
+            state->prev_gs = state->gs;
             state->gs = new_gs;
+
+            state->time_since_last_tick = 0.0;
 
             break;
         case PT_GAME_OVER:

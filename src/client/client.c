@@ -1,6 +1,7 @@
 #include <SDL_stdinc.h>
 #include <client.h>
 #include <SDL_timer.h>
+#include <server.h>
 #include "game.h"
 #include "input.h"
 #include "network.h"
@@ -14,11 +15,20 @@ static bool client_state_init(client_state* state, const char* hostname, const c
         return false;
     }
 
+    if (!game_state_init(&state->gs, 0, 0)) {
+        fprintf(stderr, "game_state_init failed\n");
+    }
+    if (!game_state_init(&state->prev_gs, 0, 0)) {
+        fprintf(stderr, "game_state_init failed\n");
+    }
+
     if (!render_init(&state->rctx, state->gs.brd.width, state->gs.brd.height)) {
         fprintf(stderr, "render_init failed\n");
         client_disconnect(state);
         return false;
     }
+
+    state->time_since_last_tick = 0.0;
     return true;
 }
 
@@ -28,6 +38,7 @@ static void client_state_destroy(client_state* state)
         return;
 
     game_state_destroy(&state->gs);
+    game_state_destroy(&state->prev_gs);
     render_destroy(&state->rctx);
     client_disconnect(state);
 }
@@ -59,7 +70,13 @@ bool client_run(const char* hostname, const char* port)
             break;
         }
 
-        if (!render_game(&state.rctx, &state.gs, state.snake_id, dt)) {
+        state.time_since_last_tick += dt;
+        double tick_duration_sec = TICK_MS / 1000.0;
+        double interp_factor = state.time_since_last_tick / tick_duration_sec;
+        if (interp_factor > 1.5)
+            interp_factor = 1.0;
+
+        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.snake_id, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
             rc = false;
             break;

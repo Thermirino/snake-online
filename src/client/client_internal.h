@@ -13,7 +13,10 @@ typedef struct {
     uint32_t snake_id;
 
     game_state gs;
+    game_state prev_gs;
     render_context rctx;
+
+    double time_since_last_tick;
 } client_state;
 
 #endif
