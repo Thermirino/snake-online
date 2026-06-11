@@ -10,7 +10,7 @@
 #define BORDER_SIZE     2       // in cells
 #define MIN_ZOOM        0.5
 #define MAX_ZOOM        1.5
-#define CAM_SMOOTHNESS  0.1
+#define CAM_SMOOTHNESS  4.0
 
 typedef struct {
     color_name background;
@@ -39,7 +39,7 @@ typedef struct {
 
 bool render_init(render_context* rctx, int win_width, int win_height);
 void render_destroy(render_context* rctx);
-bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id);
+bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id, double dt);
 bool render_grid(render_context* rctx, const board* brd);
 bool render_snake(render_context* rctx, const snake* s);
 bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size);

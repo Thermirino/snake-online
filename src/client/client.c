@@ -42,8 +42,10 @@ bool client_run(const char* hostname, const char* port)
 
     bool rc = true;
     bool quit_request = false;
+    Uint64 prev_frame = SDL_GetTicks64();
     while (!quit_request) {
         Uint64 frame_start = SDL_GetTicks64();
+        double dt = (frame_start - prev_frame) / 1000.0;
 
         if (!process_input(&state, &quit_request)) {
             fprintf(stderr, "process_input failed\n");
@@ -57,16 +59,18 @@ bool client_run(const char* hostname, const char* port)
             break;
         }
 
+        if (!render_game(&state.rctx, &state.gs, state.snake_id, dt)) {
+            fprintf(stderr, "render_game failed\n");
+            rc = false;
+            break;
+        }
+
         Uint64 frame_time = SDL_GetTicks64() - frame_start;
         if (frame_time < TICKS_PER_FRAME) {
             SDL_Delay(TICKS_PER_FRAME - frame_time);
         }
 
-        if (!render_game(&state.rctx, &state.gs, state.snake_id)) {
-            fprintf(stderr, "render_game failed\n");
-            rc = false;
-            break;
-        }
+        prev_frame = frame_start;
     }
     
     client_state_destroy(&state);

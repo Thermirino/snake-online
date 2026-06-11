@@ -227,7 +227,7 @@ bool render_food(render_context* rctx, point* food, size_t size)
     return true;
 }
 
-static void center_camera(render_context* rctx, const game_state* gs, uint32_t snake_id)
+static void center_camera(render_context* rctx, const game_state* gs, uint32_t snake_id, double dt)
 {
     snake* s = game_find_snake((game_state*)gs, snake_id);
     if (!s) {
@@ -259,8 +259,8 @@ static void center_camera(render_context* rctx, const game_state* gs, uint32_t s
             target_y = gs->brd.height - rctx->camera_h - 1 + BORDER_SIZE;
     }
 
-    rctx->camera_x += (target_x - rctx->camera_x) * rctx->smoothness;
-    rctx->camera_y += (target_y - rctx->camera_y) * rctx->smoothness;
+    rctx->camera_x += (target_x - rctx->camera_x) * rctx->smoothness * dt;
+    rctx->camera_y += (target_y - rctx->camera_y) * rctx->smoothness * dt;
 }
 
 static void update_camera_size(render_context* rctx)
@@ -299,7 +299,8 @@ bool render_resize_window(render_context* rctx, int win_width, int win_height)
     return true;
 }
 
-bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id)
+bool render_game(render_context* rctx, const game_state* gs, 
+                 uint32_t snake_id, double dt)
 {
     if (!set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -314,7 +315,7 @@ bool render_game(render_context* rctx, const game_state* gs, uint32_t snake_id)
         gs->snakes_size) {
         snake_id = gs->snakes[0].id;
     }
-    center_camera(rctx, gs, snake_id);
+    center_camera(rctx, gs, snake_id, dt);
 
     if (!render_snakes(rctx, gs->snakes, gs->snakes_size)) {
         fprintf(stderr, "render_snakes failed\n");
