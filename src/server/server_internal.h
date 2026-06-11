@@ -5,10 +5,11 @@
 #include <poll.h>
 #include <game.h>
 #include <protocol.h>
+#include "input_queue.h"
 
 #define MAX_PENDING_CONNECTIONS     16
 #define MAX_CLIENTS                 16
-#define TICK_MS                     200
+#define TICK_MS                     150
 
 typedef enum {
     CLIENT_CONNECTING = 0,
@@ -20,6 +21,7 @@ typedef struct {
     client_status status;
     int fd;
     uint32_t snake_id;
+    input_queue in_queue;
 } client;
 
 typedef struct {

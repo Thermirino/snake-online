@@ -70,7 +70,7 @@ bool render_init(render_context* rctx, int win_width, int win_height)
         goto failed;
     }
 
-    rctx->renderer = SDL_CreateRenderer(rctx->window, -1, SDL_RENDERER_ACCELERATED);
+    rctx->renderer = SDL_CreateRenderer(rctx->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!rctx->renderer) {
         fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError());
         goto failed;

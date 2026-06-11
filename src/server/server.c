@@ -10,6 +10,7 @@
 #include <poll.h>
 #include <server.h>
 #include "game.h"
+#include "input_queue.h"
 #include "server_internal.h"
 #include "protocol.h"
 #include "snake.h"
@@ -227,6 +228,7 @@ static bool handle_packet(server_state* state,
 
             client->snake_id = snake_id;
             client->status = CLIENT_CONNECTED;
+            input_queue_init(&client->in_queue);
 
             connect_ack_payload ack;
             ack.snake_id = htobe32(snake_id);
@@ -244,10 +246,7 @@ static bool handle_packet(server_state* state,
                 return true;
 
             input_payload* input = payload;
-            if (!game_change_snake_direction(&state->gs, client->snake_id, be32toh(input->dir))) {
-                    fprintf(stderr, "game_change_snake_direction failed\n");
-                    return false;
-            }
+            input_queue_put(&client->in_queue, be32toh(input->dir));
             break;
         case PT_DISCONNECT:
             break;
@@ -354,6 +353,25 @@ static uint64_t get_time_ms(void)
     return (ts.tv_sec * 1000) + (ts.tv_nsec / 1000000);
 }
 
+static bool process_clients_inputs(server_state* state)
+{
+    for (size_t i = 0; i < state->nclients; i++) {
+
+        client* cl = &state->clients[i];
+        if (cl->status == CLIENT_CONNECTED) {
+            direction dir;
+            if (input_queue_get(&cl->in_queue, &dir)) {
+                if (!game_change_snake_direction(&state->gs, cl->snake_id, dir)) {
+                    fprintf(stderr, "game_change_snake_direction failed\n");
+                    return false;
+                }
+            }
+        }
+
+    }
+    return true;
+}
+
 bool server_run(const char* port, int width, int height)
 {
     signal(SIGINT, sigint_handler);
@@ -414,6 +432,12 @@ bool server_run(const char* port, int width, int height)
 
         cur_time = get_time_ms();
         if (cur_time - last_update_time >= TICK_MS) {
+            if (!process_clients_inputs(&state)) {
+                fprintf(stderr, "process_clients_inputs failed\n");
+                rc = false;
+                break;
+            }
+
             uint32_t* dead_snake_ids;
             size_t ndead;
             if (!game_update(&state.gs, &dead_snake_ids, &ndead)) {

@@ -130,7 +130,8 @@ target_link_libraries(client PRIVATE snake_client)
 
 # snake_server library
 add_library(snake_server STATIC
-                            src/server/server.c)
+                            src/server/server.c
+                            src/server/input_queue.c)
 target_include_directories(snake_server 
                                 PUBLIC include
                                 PRIVATE src/server)
