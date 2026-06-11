@@ -28,7 +28,7 @@ typedef struct {
     int win_height;             // in pixels
 
     double camera_y, camera_x;  // in cells
-    int camera_w, camera_h;     // in cells
+    double camera_w, camera_h;  // in cells
     double smoothness;
 
     int cell_size;              // in pixels

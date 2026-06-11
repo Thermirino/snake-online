@@ -44,8 +44,8 @@ bool render_init(render_context* rctx, int win_width, int win_height)
 
     rctx->camera_y = 0.0;
     rctx->camera_x = 0.0;
-    rctx->camera_w = rctx->win_width / rctx->cell_size;
-    rctx->camera_h = rctx->win_height / rctx->cell_size;
+    rctx->camera_w = (double)rctx->win_width / rctx->cell_size;
+    rctx->camera_h = (double)rctx->win_height / rctx->cell_size;
     rctx->smoothness = CAM_SMOOTHNESS;
 
     rctx->zoom = 1.0;
