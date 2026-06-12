@@ -220,8 +220,7 @@ bool game_change_snake_direction(game_state* gs, uint32_t snake_id, direction di
 
     snake* s = game_find_snake(gs, snake_id);
     if (!s) {
-        fprintf(stderr, "game_find_snake failed\n");
-        return false;
+        return true;
     }
     snake_change_direction(s, dir);
 

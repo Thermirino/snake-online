@@ -12,6 +12,7 @@ typedef enum {
     GREEN,
     BLUE,
     PURPLE,
+    DARK_BLUE,
 
     COLOR_COUNT
 } color_name;

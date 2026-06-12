@@ -16,13 +16,16 @@ typedef struct {
     color_name background;
     color_name grid;
     color_name food;
+    color_name leaderboard_bg;
+    color_name leaderboard_fg;
 } theme;
 
 typedef struct {
     SDL_Window* window;
     SDL_Renderer* renderer;
-    TTF_Font* text_font;
-    int text_font_size;
+    TTF_Font* font_small;
+    TTF_Font* font_medium;
+    TTF_Font* font_large;
 
     int win_width;              // in pixels
     int win_height;             // in pixels
@@ -39,11 +42,15 @@ typedef struct {
 
 bool render_init(render_context* rctx, int win_width, int win_height);
 void render_destroy(render_context* rctx);
+
 bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor);
 bool render_grid(render_context* rctx, const board* brd);
 bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, double interp_factor);
 bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size, const snake* prev_snakes, size_t prev_snakes_size, double interp_factor);
 bool render_food(render_context* rctx, point* food, size_t size);
+bool render_text(render_context* rctx, TTF_Font* font, const char* text, int x, int y, color_name cname);
+bool render_leaderboard(render_context* rctx, const game_state* gs);
+
 void render_set_zoom(render_context* rctx, double zoom);
 bool render_resize_window(render_context* rctx, int win_width, int win_height);
 

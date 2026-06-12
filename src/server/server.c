@@ -244,6 +244,8 @@ static bool handle_packet(server_state* state,
         case PT_INPUT:
             if (client->snake_id == SNAKE_ID_INVALID)
                 return true;
+            else if (payload_size != sizeof(input_payload))
+                return false;
 
             input_payload* input = payload;
             input_queue_put(&client->in_queue, be32toh(input->dir));

@@ -1,5 +1,4 @@
 #include <SDL_events.h>
-#include <stdlib.h>
 #include <SDL.h>
 #include <unity.h>
 #include <render.h>
@@ -30,7 +29,6 @@ void test_render_grid(void)
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
     TEST_ASSERT_NOT_NULL(rctx.window);
     TEST_ASSERT_NOT_NULL(rctx.renderer);
-    TEST_ASSERT_NOT_NULL(rctx.text_font);
     TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
@@ -53,7 +51,6 @@ void test_render_snake(void)
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
     TEST_ASSERT_NOT_NULL(rctx.window);
     TEST_ASSERT_NOT_NULL(rctx.renderer);
-    TEST_ASSERT_NOT_NULL(rctx.text_font);
     TEST_ASSERT_TRUE(render_snake(&rctx, &sn, NULL, 0.0));
     TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);

@@ -1,25 +1,29 @@
-#include <SDL_error.h>
 #include <SDL_render.h>
-#include <SDL_ttf.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <SDL.h>
+#include <SDL_ttf.h>
 #include "render.h"
 #include "game.h"
 #include "snake.h"
 
 static const SDL_Color colors[] = {
-    { 233, 216, 166, 255 },
+    { 255, 255, 255, 255 },
     { 0, 18, 25, 255 },
     { 174, 32, 18, 255 },
     { 251, 86, 7, 255 },
     { 255, 190, 11, 255 },
     { 138, 201, 38, 255 },
     { 58, 134, 255, 255 },
-    { 131, 56, 236, 255 }
+    { 131, 56, 236, 255 },
+    { 20, 24, 33, 255 }
 };
 
 /* prototypes of static functions */
 static SDL_Color get_color(color_name cname);
-static bool set_color(render_context* rs, color_name cname);
+static bool set_color(render_context* rctx, color_name cname);
+static bool set_colora(render_context* rctx, color_name cname, int alpha);
 static void update_camera_size(render_context* rctx);
 
 bool render_init(render_context* rctx, int win_width, int win_height)
@@ -29,7 +33,9 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     }
     rctx->window = NULL;
     rctx->renderer = NULL;
-    rctx->text_font = NULL;
+    rctx->font_small = NULL;
+    rctx->font_medium = NULL;
+    rctx->font_large = NULL;
 
     if (win_width <= 0) {
         win_width = 1024;
@@ -39,7 +45,6 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     }
     rctx->win_width = win_width;
     rctx->win_height = win_height;
-    rctx->text_font_size = win_height / 20;
     rctx->cell_size = win_height / 20;
 
     rctx->camera_y = 0.0;
@@ -53,6 +58,8 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->colors.background = WHITE;
     rctx->colors.grid = BLACK;
     rctx->colors.food = RED;
+    rctx->colors.leaderboard_bg = DARK_BLUE;
+    rctx->colors.leaderboard_fg = WHITE;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -80,8 +87,22 @@ bool render_init(render_context* rctx, int win_width, int win_height)
         fprintf(stderr, "TTF_Init failed: %s\n", TTF_GetError());
         goto failed;
     }
-    rctx->text_font = TTF_OpenFont("assets/fonts/sans.ttf", rctx->text_font_size);
-    if (rctx->text_font == NULL) {
+
+    int font_size = 24;
+    rctx->font_small = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_small == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    font_size = 28;
+    rctx->font_medium = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_medium == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    font_size = 32;
+    rctx->font_large = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_large == NULL) {
         fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
         goto failed;
     }
@@ -97,7 +118,9 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     return true;
 
 failed:
-    TTF_CloseFont(rctx->text_font);
+    TTF_CloseFont(rctx->font_small);
+    TTF_CloseFont(rctx->font_medium);
+    TTF_CloseFont(rctx->font_large);
     TTF_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
@@ -110,7 +133,9 @@ void render_destroy(render_context* rctx)
     if (!rctx)
         return;
 
-    TTF_CloseFont(rctx->text_font);
+    TTF_CloseFont(rctx->font_small);
+    TTF_CloseFont(rctx->font_medium);
+    TTF_CloseFont(rctx->font_large);
     TTF_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
@@ -125,6 +150,18 @@ static SDL_Color get_color(color_name cname)
 static bool set_color(render_context* rctx, color_name cname)
 {
     SDL_Color color = get_color(cname);
+    if (SDL_SetRenderDrawColor(rctx->renderer, color.r, color.g, color.b, color.a) < 0) {
+        fprintf(stderr, "SDL_SetRenderDrawColor: %s\n",
+                SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
+static bool set_colora(render_context* rctx, color_name cname, int alpha)
+{
+    SDL_Color color = get_color(cname);
+    color.a = alpha;
     if (SDL_SetRenderDrawColor(rctx->renderer, color.r, color.g, color.b, color.a) < 0) {
         fprintf(stderr, "SDL_SetRenderDrawColor: %s\n",
                 SDL_GetError());
@@ -319,16 +356,8 @@ bool render_resize_window(render_context* rctx, int win_width, int win_height)
 {
     rctx->win_width = win_width;
     rctx->win_height = win_height;
-    rctx->text_font_size = win_height / 20;
 
     update_camera_size(rctx);
-
-    TTF_CloseFont(rctx->text_font);
-    rctx->text_font = TTF_OpenFont("assets/fonts/sans.ttf", rctx->text_font_size);
-    if (rctx->text_font == NULL) {
-        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
-        return false;
-    }
     return true;
 }
 
@@ -362,7 +391,159 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
         fprintf(stderr, "render_grid failed\n");
         return false;
     }
+    if (!render_leaderboard(rctx, gs)) {
+        fprintf(stderr, "render_leaderboard failed\n");
+        return false;
+    }
 
     SDL_RenderPresent(rctx->renderer);
+    return true;
+}
+
+bool render_text(render_context* rctx, TTF_Font* font, const char* text,
+                 int x, int y, color_name cname)
+{
+    SDL_Color color = get_color(cname);
+    SDL_Surface* surface = TTF_RenderText_Blended(font, text, color);
+    if (!surface) {
+        fprintf(stderr, "SDL_RenderText_Blended: %s\n", 
+                TTF_GetError());
+        return false;
+    }
+
+    int w = surface->w;
+    int h = surface->h;
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(rctx->renderer, surface);
+    SDL_FreeSurface(surface);
+    if (!texture) {
+        fprintf(stderr, "SDL_CreateTextureFromSurface: %s\n", 
+                SDL_GetError());
+        return false;
+    }
+
+    if (SDL_RenderCopy(rctx->renderer, texture, NULL, &(SDL_Rect) { .x = x, .y = y, .w = w, .h = h}) != 0) {
+        fprintf(stderr, "SDL_RenderCopy: %s\n", 
+                SDL_GetError());
+        SDL_DestroyTexture(texture);
+        return false;
+    }
+
+    SDL_DestroyTexture(texture);
+    return true;
+}
+
+static int snake_cmp_by_len(const void* a, const void* b)
+{
+    const snake* s1 = *(snake**)a;
+    const snake* s2 = *(snake**)b;
+
+    if (s1->body.size == s2->body.size)
+        return 0;
+    else if (s1->body.size > s2->body.size)
+        return -1;
+    else
+        return 1;
+}
+
+bool render_leaderboard(render_context* rctx, const game_state* gs)
+{
+    int margin = 10;
+    int border = 10;
+    int alpha = 200;
+
+    size_t nentries = 5;
+    int font_large_size = TTF_FontHeight(rctx->font_large);
+    int font_med_size = TTF_FontHeight(rctx->font_medium);
+    int lb_width = rctx->win_width / 5;
+    int lb_height = border * 2 + font_large_size + font_med_size * nentries;
+
+    // render bg
+    SDL_Rect rect;
+    rect.x = rctx->win_width - lb_width - margin;
+    rect.y = margin;
+    rect.w = lb_width;
+    rect.h = lb_height;
+    if (!set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
+        fprintf(stderr, "set_colora failed\n");
+        return false;
+    }
+    if (SDL_RenderFillRect(rctx->renderer, &rect) != 0) {
+        fprintf(stderr, "SDL_RenderFillRect failed\n");
+        return false;
+    }
+
+    // render title
+    int w, h;
+    const char* text = "Leaderboard";
+    if (TTF_SizeUTF8(rctx->font_large, text, &w, &h) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+        return false;
+    }
+    int x = rctx->win_width - margin - lb_width / 2 - w / 2;
+    int y = margin + border;
+    if (!render_text(rctx, 
+                     rctx->font_large, 
+                     text,
+                     x,
+                     y,
+                     rctx->colors.leaderboard_fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+    y += h;
+
+    // sort snakes
+    snake** snakes_sorted = malloc(gs->snakes_size * sizeof(snake*));
+    if (!snakes_sorted) {
+        perror("malloc");
+        return false;
+    }
+    for (size_t i = 0; i < gs->snakes_size; i++) {
+        snakes_sorted[i] = &gs->snakes[i];
+    }
+    qsort(snakes_sorted, gs->snakes_size, sizeof(snake*), snake_cmp_by_len);
+
+    // render fg
+    char num[23];
+    char score[21];
+    for (size_t i = 0; i < gs->snakes_size && i < nentries; i++) {
+        snake* sn = snakes_sorted[i];
+
+        x = rctx->win_width - margin - lb_width + border;
+        snprintf(num, sizeof(num), "%zu. ", i + 1);
+        if (TTF_SizeUTF8(rctx->font_medium, num, &w, &h) != 0) {
+            fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+            free(snakes_sorted);
+            return false;
+        }
+        if (!render_text(rctx, rctx->font_medium, num, x, y, rctx->colors.leaderboard_fg)) {
+            fprintf(stderr, "render_text failed\n");
+            free(snakes_sorted);
+            return false;
+        }
+        x += w;
+
+        text = "Player";
+        if (!render_text(rctx, rctx->font_medium, text, x, y, sn->color)) {
+            fprintf(stderr, "render_text failed\n");
+            free(snakes_sorted);
+            return false;
+        }
+
+        snprintf(score, sizeof(score), "%zu", sn->body.size);
+        if (TTF_SizeUTF8(rctx->font_medium, score, &w, &h) != 0) {
+            fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+            free(snakes_sorted);
+            return false;
+        }
+        x = rctx->win_width - margin - border - w;
+        if (!render_text(rctx, rctx->font_medium, score, x, y, rctx->colors.leaderboard_fg)) {
+            fprintf(stderr, "render_text failed\n");
+            free(snakes_sorted);
+            return false;
+        }
+        y += h;
+    }
+    free(snakes_sorted);
     return true;
 }

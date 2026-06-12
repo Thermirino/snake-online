@@ -9,7 +9,7 @@
 
 #define MAX_PENDING_CONNECTIONS     16
 #define MAX_CLIENTS                 16
-#define TICK_MS                     150
+#define TICK_MS                     300
 
 typedef enum {
     CLIENT_CONNECTING = 0,
