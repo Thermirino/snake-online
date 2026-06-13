@@ -42,6 +42,40 @@ static void client_state_destroy(client_state* state)
     client_disconnect(state);
 }
 
+void client_spectate_next(client_state* state)
+{
+    if (state->gs.snakes_size) {
+        size_t cur = 0;
+        for (size_t i = 0; i < state->gs.snakes_size; i++) {
+            if (state->gs.snakes[i].id == state->spectate_snake_id) {
+                cur = i;
+                break;
+            }
+        }
+        cur = (cur + 1) % state->gs.snakes_size;
+        state->spectate_snake_id = state->gs.snakes[cur].id;
+    }
+}
+
+void client_spectate_prev(client_state* state)
+{
+    if (state->gs.snakes_size) {
+        size_t cur = 0;
+        for (size_t i = 0; i < state->gs.snakes_size; i++) {
+            if (state->gs.snakes[i].id == state->spectate_snake_id) {
+                cur = i;
+                break;
+            }
+        }
+        if (cur == 0)
+            state->spectate_snake_id = state->gs.snakes[state->gs.snakes_size - 1].id;
+        else {
+            cur--;
+            state->spectate_snake_id = state->gs.snakes[cur].id;
+        }
+    }
+}
+
 bool client_run(const char* hostname, const char* port)
 {
     client_state state;
@@ -57,7 +91,7 @@ bool client_run(const char* hostname, const char* port)
         Uint64 frame_start = SDL_GetTicks64();
         double dt = (frame_start - prev_frame) / 1000.0;
 
-        if (!process_input(&state, &quit_request)) {
+        if (!process_input(&state, &quit_request, dt)) {
             fprintf(stderr, "process_input failed\n");
             rc = false;
             break;
@@ -75,7 +109,7 @@ bool client_run(const char* hostname, const char* port)
         if (interp_factor > 1.5)
             interp_factor = 1.0;
 
-        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.snake_id, dt, interp_factor)) {
+        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.spectate_snake_id, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
             rc = false;
             break;

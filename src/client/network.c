@@ -5,6 +5,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include "network.h"
+#include "client_internal.h"
 #include "game.h"
 #include "snake.h"
 #include <protocol.h>
@@ -82,6 +83,7 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
 
     connect_ack_payload* ack = payload;
     state->snake_id = be32toh(ack->snake_id);
+    state->spectate_snake_id = state->snake_id;
     state->server_tick_ms = be64toh(ack->server_tick_ms);
     free(payload);
 
@@ -122,6 +124,7 @@ static bool handle_packet(client_state* state,
             break;
         case PT_GAME_OVER:
             state->snake_id = SNAKE_ID_INVALID;
+            client_spectate_next(state);
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",

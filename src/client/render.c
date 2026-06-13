@@ -1,3 +1,4 @@
+#include <SDL_pixels.h>
 #include <SDL_render.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,7 +52,7 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->camera_x = 0.0;
     rctx->camera_w = (double)rctx->win_width / rctx->cell_size;
     rctx->camera_h = (double)rctx->win_height / rctx->cell_size;
-    rctx->smoothness = CAM_SMOOTHNESS;
+    rctx->camera_mode = CAMERA_FOLLOW;
 
     rctx->zoom = 1.0;
 
@@ -60,6 +61,8 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->colors.food = RED;
     rctx->colors.leaderboard_bg = DARK_BLUE;
     rctx->colors.leaderboard_fg = WHITE;
+    rctx->colors.free_camera_lbl_bg = DARK_BLUE;
+    rctx->colors.free_camera_lbl_fg = ORANGE;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -329,8 +332,8 @@ static void center_camera(render_context* rctx, const game_state* gs, const game
             target_y = gs->brd.height - rctx->camera_h + BORDER_SIZE;
     }
 
-    rctx->camera_x += (target_x - rctx->camera_x) * rctx->smoothness * dt;
-    rctx->camera_y += (target_y - rctx->camera_y) * rctx->smoothness * dt;
+    rctx->camera_x += (target_x - rctx->camera_x) * FOLLOW_CAMERA_SPEED * dt;
+    rctx->camera_y += (target_y - rctx->camera_y) * FOLLOW_CAMERA_SPEED * dt;
 }
 
 static void update_camera_size(render_context* rctx)
@@ -361,8 +364,47 @@ bool render_resize_window(render_context* rctx, int win_width, int win_height)
     return true;
 }
 
+bool render_free_camera_label(render_context* rctx)
+{
+
+    const char* text = "FREE CAMERA";
+    int w, h;
+    if (TTF_SizeUTF8(rctx->font_large, text, &w, &h) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+        return false;
+    }
+
+    int margin = 10;
+    int padding = 20;
+    int alpha = 220;
+
+    // render bg
+    SDL_Rect rect;
+    rect.x = rctx->win_width / 2 - w / 2 - padding;
+    rect.y = margin;
+    rect.w = w + padding * 2;
+    rect.h = h + padding * 2;
+    if (!set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
+        fprintf(stderr, "set_colora failed\n");
+        return false;
+    }
+    if (SDL_RenderFillRect(rctx->renderer, &rect) != 0) {
+        fprintf(stderr, "SDL_RenderFillRect failed\n");
+        return false;
+    }
+
+    // render text
+    int x = rctx->win_width / 2 - w / 2;
+    int y = margin + padding;
+    if (!render_text(rctx, rctx->font_large, text, x, y, rctx->colors.free_camera_lbl_fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+    return true;
+}
+
 bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, 
-                 uint32_t snake_id, double dt, double interp_factor)
+                 uint32_t spectate_snake_id, double dt, double interp_factor)
 {
     if (!set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -373,11 +415,8 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
                 SDL_GetError());
     }
 
-    if (snake_id == SNAKE_ID_INVALID &&
-        gs->snakes_size) {
-        snake_id = gs->snakes[0].id;
-    }
-    center_camera(rctx, gs, prev_gs, snake_id, dt, interp_factor);
+    if (rctx->camera_mode == CAMERA_FOLLOW)
+        center_camera(rctx, gs, prev_gs, spectate_snake_id, dt, interp_factor);
 
     if (!render_snakes(rctx, gs->snakes, gs->snakes_size, prev_gs->snakes, prev_gs->snakes_size, interp_factor)) {
         fprintf(stderr, "render_snakes failed\n");
@@ -396,6 +435,13 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
         return false;
     }
 
+    if (rctx->camera_mode == CAMERA_FREE) {
+        if (!render_free_camera_label(rctx)) {
+            fprintf(stderr, "render_free_camera_label failed\n");
+            return false;
+        }
+    }
+
     SDL_RenderPresent(rctx->renderer);
     return true;
 }
@@ -404,9 +450,9 @@ bool render_text(render_context* rctx, TTF_Font* font, const char* text,
                  int x, int y, color_name cname)
 {
     SDL_Color color = get_color(cname);
-    SDL_Surface* surface = TTF_RenderText_Blended(font, text, color);
+    SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
     if (!surface) {
-        fprintf(stderr, "SDL_RenderText_Blended: %s\n", 
+        fprintf(stderr, "TTF_RenderUTF8_Blended: %s\n", 
                 TTF_GetError());
         return false;
     }
@@ -448,14 +494,14 @@ static int snake_cmp_by_len(const void* a, const void* b)
 bool render_leaderboard(render_context* rctx, const game_state* gs)
 {
     int margin = 10;
-    int border = 10;
+    int padding = 10;
     int alpha = 200;
 
     size_t nentries = 5;
     int font_large_size = TTF_FontHeight(rctx->font_large);
     int font_med_size = TTF_FontHeight(rctx->font_medium);
     int lb_width = rctx->win_width / 5;
-    int lb_height = border * 2 + font_large_size + font_med_size * nentries;
+    int lb_height = padding * 2 + font_large_size + font_med_size * nentries;
 
     // render bg
     SDL_Rect rect;
@@ -480,7 +526,7 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
         return false;
     }
     int x = rctx->win_width - margin - lb_width / 2 - w / 2;
-    int y = margin + border;
+    int y = margin + padding;
     if (!render_text(rctx, 
                      rctx->font_large, 
                      text,
@@ -509,7 +555,7 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
     for (size_t i = 0; i < gs->snakes_size && i < nentries; i++) {
         snake* sn = snakes_sorted[i];
 
-        x = rctx->win_width - margin - lb_width + border;
+        x = rctx->win_width - margin - lb_width + padding;
         snprintf(num, sizeof(num), "%zu. ", i + 1);
         if (TTF_SizeUTF8(rctx->font_medium, num, &w, &h) != 0) {
             fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
@@ -536,7 +582,7 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
             free(snakes_sorted);
             return false;
         }
-        x = rctx->win_width - margin - border - w;
+        x = rctx->win_width - margin - padding - w;
         if (!render_text(rctx, rctx->font_medium, score, x, y, rctx->colors.leaderboard_fg)) {
             fprintf(stderr, "render_text failed\n");
             free(snakes_sorted);

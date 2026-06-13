@@ -3,6 +3,6 @@
 
 #include "client_internal.h"
 
-bool process_input(client_state* state, bool* quit);
+bool process_input(client_state* state, bool* quit, double dt);
 
 #endif
