@@ -109,7 +109,7 @@ bool client_run(const char* hostname, const char* port)
         if (interp_factor > 1.5)
             interp_factor = 1.0;
 
-        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.spectate_snake_id, dt, interp_factor)) {
+        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
             rc = false;
             break;

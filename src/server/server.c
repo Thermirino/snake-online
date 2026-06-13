@@ -202,7 +202,6 @@ static bool handle_packet(server_state* state,
                           void* payload,
                           size_t payload_size)
 {
-    (void)payload_size;
     if (client->status == CLIENT_CONNECTING &&
         ptype != PT_CONNECT) {
         printf("The client is not connected (fd = %d)\n",
@@ -241,10 +240,33 @@ static bool handle_packet(server_state* state,
                 return false;
             }
             break;
+        case PT_RESPAWN:
+            if (client->snake_id != SNAKE_ID_INVALID) {
+                return true;
+            }
+
+            if (!game_add_player_snake(&state->gs, &snake_id)) {
+                fprintf(stderr, "game_add_player_snake() failed\n");
+                return false;
+            }
+
+            client->snake_id = snake_id;
+
+            respawn_ack_payload respawn_ack;
+            respawn_ack.snake_id = htobe32(snake_id);
+            if (!send_packet(client->fd,
+                             PT_RESPAWN_ACK,
+                             &respawn_ack,
+                             sizeof(respawn_ack))) {
+                fprintf(stderr, "send_packet failed\n");
+                return false;
+            }
+            break;
         case PT_INPUT:
             if (client->snake_id == SNAKE_ID_INVALID)
                 return true;
-            else if (payload_size != sizeof(input_payload))
+
+            if (payload_size != sizeof(input_payload))
                 return false;
 
             input_payload* input = payload;
@@ -318,7 +340,7 @@ static bool process_dead_players(server_state* state, uint32_t* dead_snake_ids, 
             return false;
         }
 
-        cl->snake_id = 0;
+        cl->snake_id = SNAKE_ID_INVALID;
     }
     return true;
 }

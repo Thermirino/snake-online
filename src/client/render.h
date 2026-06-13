@@ -21,6 +21,8 @@ typedef struct {
     color_name leaderboard_fg;
     color_name free_camera_lbl_bg;
     color_name free_camera_lbl_fg;
+    color_name game_over_bg;
+    color_name game_over_fg;
 } theme;
 
 typedef enum {
@@ -51,7 +53,7 @@ typedef struct {
 bool render_init(render_context* rctx, int win_width, int win_height);
 void render_destroy(render_context* rctx);
 
-bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, uint32_t spectate_snake_id, double dt, double interp_factor);
+bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor);
 bool render_grid(render_context* rctx, const board* brd);
 bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, double interp_factor);
 bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size, const snake* prev_snakes, size_t prev_snakes_size, double interp_factor);
@@ -59,6 +61,7 @@ bool render_food(render_context* rctx, point* food, size_t size);
 bool render_text(render_context* rctx, TTF_Font* font, const char* text, int x, int y, color_name cname);
 bool render_leaderboard(render_context* rctx, const game_state* gs);
 bool render_free_camera_label(render_context* rctx);
+bool render_game_over(render_context* rctx);
 
 void render_set_zoom(render_context* rctx, double zoom);
 bool render_resize_window(render_context* rctx, int win_width, int win_height);

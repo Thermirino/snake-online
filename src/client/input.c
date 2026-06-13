@@ -5,6 +5,7 @@
 #include <protocol.h>
 #include "client_internal.h"
 #include "input.h"
+#include "network.h"
 #include "render.h"
 #include "snake.h"
 
@@ -32,15 +33,13 @@ bool process_input(client_state* state, bool* quit, double dt)
                         dir = DIR_UP;
                         change_direction = true;
                     }
-                }
-                else if (event.key.keysym.sym == SDLK_DOWN) {
+                } else if (event.key.keysym.sym == SDLK_DOWN) {
                     if (state->rctx.camera_mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_DOWN;
                         change_direction = true;
                     }
-                }
-                else if (event.key.keysym.sym == SDLK_RIGHT) {
+                } else if (event.key.keysym.sym == SDLK_RIGHT) {
                     if (state->rctx.camera_mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_RIGHT;
@@ -49,8 +48,7 @@ bool process_input(client_state* state, bool* quit, double dt)
                         // state->snake_id == SNAKE_ID_INVALID
                         client_spectate_next(state);
                     }
-                }
-                else if (event.key.keysym.sym == SDLK_LEFT) {
+                } else if (event.key.keysym.sym == SDLK_LEFT) {
                     if (state->rctx.camera_mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_LEFT;
@@ -59,12 +57,20 @@ bool process_input(client_state* state, bool* quit, double dt)
                         // state->snake_id == SNAKE_ID_INVALID
                         client_spectate_prev(state);
                     }
-                }
-                if (event.key.keysym.sym == SDLK_c) {
+                } else if (event.key.keysym.sym == SDLK_c) {
                     if (state->rctx.camera_mode == CAMERA_FOLLOW)
                         state->rctx.camera_mode = CAMERA_FREE;
                     else
                         state->rctx.camera_mode = CAMERA_FOLLOW;
+                } else if (event.key.keysym.sym == SDLK_r &&
+                           state->snake_id == SNAKE_ID_INVALID) {
+                    if (!send_packet(state->sockfd,
+                                     PT_RESPAWN,
+                                     NULL,
+                                     0)) {
+                        fprintf(stderr, "send_packet failed\n");
+                        return false;
+                    }
                 }
                 break;
             case SDL_MOUSEWHEEL:

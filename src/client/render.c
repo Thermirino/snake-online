@@ -63,6 +63,8 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->colors.leaderboard_fg = WHITE;
     rctx->colors.free_camera_lbl_bg = DARK_BLUE;
     rctx->colors.free_camera_lbl_fg = ORANGE;
+    rctx->colors.game_over_bg = DARK_BLUE;
+    rctx->colors.game_over_fg = WHITE;
 
     if (!SDL_WasInit(SDL_INIT_VIDEO)) {
         if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -404,7 +406,7 @@ bool render_free_camera_label(render_context* rctx)
 }
 
 bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, 
-                 uint32_t spectate_snake_id, double dt, double interp_factor)
+                 uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor)
 {
     if (!set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -438,6 +440,13 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
     if (rctx->camera_mode == CAMERA_FREE) {
         if (!render_free_camera_label(rctx)) {
             fprintf(stderr, "render_free_camera_label failed\n");
+            return false;
+        }
+    }
+
+    if (snake_id == SNAKE_ID_INVALID) {
+        if (!render_game_over(rctx)) {
+            fprintf(stderr, "render_game_over failed\n");
             return false;
         }
     }
@@ -591,5 +600,61 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
         y += h;
     }
     free(snakes_sorted);
+    return true;
+}
+
+bool render_game_over(render_context* rctx)
+{
+    const char* text = "GAME OVER";
+    int w, h;
+    if (TTF_SizeUTF8(rctx->font_large, text, &w, &h) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+        return false;
+    }
+    const char* text2 = "Press R to Respawn";
+    int w2, h2;
+    if (TTF_SizeUTF8(rctx->font_large, text2, &w2, &h2) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+        return false;
+    }
+
+    int padding = 20;
+    int alpha = 220;
+
+    // render bg
+    SDL_Rect rect;
+    rect.x = rctx->win_width / 2 - w2 / 2 - padding;
+    rect.y = rctx->win_height / 2 - h / 2 - padding;
+    rect.w = w2 + padding * 2;
+    rect.h = h + h2 + padding * 2;
+    if (!set_colora(rctx, rctx->colors.game_over_bg, alpha)) {
+        fprintf(stderr, "set_colora failed\n");
+        return false;
+    }
+    if (SDL_RenderFillRect(rctx->renderer, &rect) != 0) {
+        fprintf(stderr, "SDL_RenderFillRect failed\n");
+        return false;
+    }
+
+    // render text
+    int x = rctx->win_width / 2 - w / 2;
+    int y = rctx->win_height / 2 - h / 2;
+    if (!render_text(rctx, rctx->font_large, text, x, y, rctx->colors.game_over_fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+    y += h;
+
+
+    if (TTF_SizeUTF8(rctx->font_large, text, &w, &h) != 0) {
+        fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+        return false;
+    }
+    x = rctx->win_width / 2 - w2 / 2;
+    if (!render_text(rctx, rctx->font_large, text2, x, y, rctx->colors.game_over_fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+
     return true;
 }

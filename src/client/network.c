@@ -7,6 +7,7 @@
 #include "network.h"
 #include "client_internal.h"
 #include "game.h"
+#include "render.h"
 #include "snake.h"
 #include <protocol.h>
 
@@ -125,6 +126,15 @@ static bool handle_packet(client_state* state,
         case PT_GAME_OVER:
             state->snake_id = SNAKE_ID_INVALID;
             client_spectate_next(state);
+            break;
+        case PT_RESPAWN_ACK:
+            if (payload_size != sizeof(respawn_ack_payload))
+                return false;
+
+            respawn_ack_payload* rpayload = payload;
+            state->snake_id = be32toh(rpayload->snake_id);
+            state->spectate_snake_id = state->snake_id;
+            state->rctx.camera_mode = CAMERA_FOLLOW;
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",

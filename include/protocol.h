@@ -21,6 +21,8 @@ typedef enum {
 typedef enum {
     PT_CONNECT = 0, 
     PT_CONNECT_ACK,
+    PT_RESPAWN,
+    PT_RESPAWN_ACK,
     PT_INPUT, 
     PT_GAME_STATE,
     PT_GAME_OVER,
@@ -40,6 +42,11 @@ typedef struct {
     uint32_t snake_id;
     uint64_t server_tick_ms;
 } connect_ack_payload;
+
+/* PT_RESPAWN_ACK payload */
+typedef struct {
+    uint32_t snake_id;
+} respawn_ack_payload;
 
 /* PT_INPUT payload */
 typedef struct {

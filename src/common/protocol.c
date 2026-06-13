@@ -17,6 +17,10 @@ const char* packet_type_str(packet_type ptype)
             return "PT_CONNECT";
         case PT_CONNECT_ACK:
             return "PT_CONNECT_ACK";
+        case PT_RESPAWN:
+            return "PT_RESPAWN";
+        case PT_RESPAWN_ACK:
+            return "PT_RESPAWN_ACK";
         case PT_INPUT:
             return "PT_INPUT";
         case PT_GAME_STATE:
