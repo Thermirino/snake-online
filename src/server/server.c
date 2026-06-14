@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <poll.h>
 #include <server.h>
+#include "color.h"
 #include "game.h"
 #include "input_queue.h"
 #include "server_internal.h"
@@ -220,7 +221,7 @@ static bool handle_packet(server_state* state,
             }
 
             uint32_t snake_id;
-            if (!game_add_player_snake(&state->gs, &snake_id)) {
+            if (!game_add_snake(&state->gs, &snake_id)) {
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }
@@ -245,7 +246,7 @@ static bool handle_packet(server_state* state,
                 return true;
             }
 
-            if (!game_add_player_snake(&state->gs, &snake_id)) {
+            if (!game_add_snake(&state->gs, &snake_id)) {
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }
@@ -405,6 +406,7 @@ bool server_run(const char* port, int width, int height)
         fprintf(stderr, "server_state_init failed\n");
         return false;
     }
+
     printf("Server is running on port: %s\n", port);
 
     bool rc = true;

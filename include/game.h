@@ -32,7 +32,7 @@ bool game_delete_snake_by_index(game_state* gs, size_t index);
 bool game_delete_snake_by_id(game_state* gs, uint32_t snake_id);
 bool game_check_collision(game_state* gs, point pos);
 bool game_is_out_of_bounds(game_state* gs, point pos);
-bool game_add_player_snake(game_state* gs, uint32_t* snake_id);
+bool game_add_snake(game_state* gs, uint32_t* snake_id);
 snake* game_find_snake(game_state* gs, uint32_t snake_id);
 bool game_change_snake_direction(game_state* gs, uint32_t snake_id, direction dir);
 

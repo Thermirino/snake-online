@@ -27,6 +27,9 @@ bool game_state_init(game_state* gs, int width, int height)
     gs->food_size = 0;
 
     gs->next_snake_id = 1;
+
+    color_pool_init(7, LIGHT_RED, LIGHT_ORANGE, LIGHT_YELLOW, LIGHT_GREEN, LIGHT_BLUE, LIGHT_PURPLE, LIGHT_PINK);
+
     return true;
 }
 
@@ -174,7 +177,7 @@ bool game_find_free_place_for_snake(game_state* gs, point* pos)
     return true;
 }
 
-bool game_add_player_snake(game_state* gs, uint32_t* snake_id)
+bool game_add_snake(game_state* gs, uint32_t* snake_id)
 {
     if (!gs || !snake_id)
         return false;
@@ -185,8 +188,13 @@ bool game_add_player_snake(game_state* gs, uint32_t* snake_id)
         return false;
     }
 
+    color_name color;
+    if (!color_pool_get(&color)) {
+        fprintf(stderr, "color_pool_get failed\n");
+        return false;
+    }
+
     snake s;
-    color_name color = random_color();
     if (!snake_init(&s, gs->next_snake_id, DIR_RIGHT, pos.y, pos.x, color)) {
         fprintf(stderr, "snake_init failed\n");
         return false;
@@ -323,6 +331,12 @@ static bool check_snake_collisions(game_state* gs,
         perror("malloc");
         return false;
     }
+
+    size_t* dead_snake_indexes = malloc(gs->snakes_size * sizeof(size_t));
+    if (!dead_snake_indexes) {
+        perror("malloc");
+        return false;
+    }
     *ndead = 0;
 
     bool dead;
@@ -333,6 +347,7 @@ static bool check_snake_collisions(game_state* gs,
 
         // out of bounds
         if (game_is_out_of_bounds(gs, *head)) {
+            dead_snake_indexes[*ndead] = i;
             (*dead_snake_ids)[(*ndead)++] = s1->id;
             dead = true;
             continue;
@@ -342,6 +357,7 @@ static bool check_snake_collisions(game_state* gs,
         for (size_t j = 1; j < s1->body.size; j++) {
             if (s1->body.points[j].x == head->x &&
                 s1->body.points[j].y == head->y) {
+                dead_snake_indexes[*ndead] = i;
                 (*dead_snake_ids)[(*ndead)++] = s1->id;
                 dead = true;
                 break;
@@ -359,6 +375,7 @@ static bool check_snake_collisions(game_state* gs,
             for (size_t k = 0; k < s2->body.size; k++) {
                 if (head->x == s2->body.points[k].x &&
                     head->y == s2->body.points[k].y) {
+                    dead_snake_indexes[*ndead] = i;
                     (*dead_snake_ids)[(*ndead)++] = s1->id;
                     dead = true;
                     break;
@@ -371,14 +388,17 @@ static bool check_snake_collisions(game_state* gs,
     }
 
     for (size_t i = 0; i < *ndead; i++) {
-        if (!game_delete_snake_by_id(gs, (*dead_snake_ids)[i])) {
+        size_t snake_index = dead_snake_indexes[i];
+        if (!game_delete_snake_by_index(gs, snake_index)) {
             fprintf(stderr, "game_delete_snake_by_id failed\n");
+            free(dead_snake_indexes);
             free(*dead_snake_ids);
             *ndead = 0;
             return false;
         }
     }
 
+    free(dead_snake_indexes);
     if (*ndead == 0)
         free(*dead_snake_ids);
 
