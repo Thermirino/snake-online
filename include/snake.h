@@ -7,6 +7,7 @@
 #include <color.h>
 
 #define SNAKE_ID_INVALID    0
+#define MAX_NICKNAME_LEN    10
 
 typedef enum {
     DIR_UP = 0,
@@ -28,6 +29,7 @@ typedef struct {
 
 typedef struct {
     uint32_t id;
+    char nickname[MAX_NICKNAME_LEN + 1];
     direction dir;
     direction last_move_dir;
     snake_body body;
@@ -35,7 +37,7 @@ typedef struct {
     bool grow;
 } snake;
 
-bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color);
+bool snake_init(snake* s, int id, const char nickname[MAX_NICKNAME_LEN + 1], direction dir, int y, int x, color_name color);
 void snake_destroy(snake* s);
 bool snake_move(snake* s);
 bool snake_change_direction(snake* s, direction dir);

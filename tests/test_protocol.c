@@ -46,13 +46,14 @@ static void test_serialize(void)
     int id1 = 1;
     int id2 = 2;
     int y = 5, x = 8;
+    const char* nickname = NULL;
     color_name color = GREEN;
-    TEST_ASSERT_TRUE(snake_init(&s1, id1, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s1, id1, nickname, DIR_UP, y, x, color));
     TEST_ASSERT(game_state_add_snake(&gs1, &s1));
     snake s2;
     y = 3, x = 4;
     color = RED;
-    TEST_ASSERT_TRUE(snake_init(&s2, id2, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s2, id2, nickname, DIR_UP, y, x, color));
     TEST_ASSERT(game_state_add_snake(&gs1, &s2));
 
     TEST_ASSERT_TRUE(game_state_serialize(&gs1, &buf, &size));

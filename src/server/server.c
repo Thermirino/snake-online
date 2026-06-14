@@ -220,8 +220,13 @@ static bool handle_packet(server_state* state,
                 return false;
             }
 
+            if (payload_size != sizeof(connect_payload))
+                return false;
+
+            connect_payload* conn_payload = payload;
+
             uint32_t snake_id;
-            if (!game_add_snake(&state->gs, &snake_id)) {
+            if (!game_add_snake(&state->gs, &snake_id, conn_payload->nickname)) {
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }
@@ -246,7 +251,12 @@ static bool handle_packet(server_state* state,
                 return true;
             }
 
-            if (!game_add_snake(&state->gs, &snake_id)) {
+            if (payload_size != sizeof(respawn_payload))
+                return false;
+
+            respawn_payload* resp_payload = payload;
+
+            if (!game_add_snake(&state->gs, &snake_id, resp_payload->nickname)) {
                 fprintf(stderr, "game_add_player_snake() failed\n");
                 return false;
             }

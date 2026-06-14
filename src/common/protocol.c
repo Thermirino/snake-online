@@ -69,6 +69,7 @@ bool game_state_serialize(const game_state* gs, uint8_t** buf, size_t* size)
     snake_header shdr;
     for (size_t i = 0; i < gs->snakes_size; i++) {
         shdr.id = htobe32(gs->snakes[i].id);
+        memcpy(shdr.nickname, gs->snakes[i].nickname, sizeof(shdr.nickname));
         shdr.dir = htobe32(gs->snakes[i].dir);
         shdr.color = htobe32(gs->snakes[i].color);
         shdr.npoints = htobe64(gs->snakes[i].body.size);
@@ -146,6 +147,7 @@ fprintf(stderr, "Incorrect data\n");
             memcpy(&shdr, p, sizeof(shdr));
             p += sizeof(shdr);
             gs->snakes[i].id = be32toh(shdr.id);
+            memcpy(gs->snakes[i].nickname, shdr.nickname, sizeof(shdr.nickname));
             gs->snakes[i].dir = be32toh(shdr.dir);
             gs->snakes[i].color = be32toh(shdr.color);
             gs->snakes[i].body.size = be64toh(shdr.npoints);

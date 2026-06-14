@@ -64,10 +64,14 @@ bool process_input(client_state* state, bool* quit, double dt)
                         state->rctx.camera_mode = CAMERA_FOLLOW;
                 } else if (event.key.keysym.sym == SDLK_r &&
                            state->snake_id == SNAKE_ID_INVALID) {
+
+                    respawn_payload resp_payload = { 0 };
+                    strncpy(resp_payload.nickname, state->nickname, MAX_NICKNAME_LEN);
+
                     if (!send_packet(state->sockfd,
                                      PT_RESPAWN,
-                                     NULL,
-                                     0)) {
+                                     &resp_payload,
+                                     sizeof(resp_payload))) {
                         fprintf(stderr, "send_packet failed\n");
                         return false;
                     }

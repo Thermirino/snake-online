@@ -582,19 +582,20 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
             free(snakes_sorted);
             return false;
         }
-        if (!render_text(rctx, rctx->font_medium, num, x, y, rctx->colors.leaderboard_fg)) {
+        if (!render_text(rctx, rctx->font_medium, num, x, y, sn->color)) {
             fprintf(stderr, "render_text failed\n");
             free(snakes_sorted);
             return false;
         }
         x += w;
 
-        text = "Player";
-        if (!render_text(rctx, rctx->font_medium, text, x, y, sn->color)) {
-            fprintf(stderr, "render_text failed\n");
-            free(snakes_sorted);
-            return false;
-        }
+        const char* nickname = sn->nickname;
+        if (nickname[0] != '\0')
+            if (!render_text(rctx, rctx->font_medium, nickname, x, y, sn->color)) {
+                fprintf(stderr, "render_text failed\n");
+                free(snakes_sorted);
+                return false;
+            }
 
         snprintf(score, sizeof(score), "%zu", sn->body.size);
         if (TTF_SizeUTF8(rctx->font_medium, score, &w, &h) != 0) {

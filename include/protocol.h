@@ -1,6 +1,7 @@
 #ifndef PROTOCOL_H
 #define PROTOCOL_H
 
+#include "snake.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <sys/types.h>
@@ -37,11 +38,21 @@ typedef struct {
     uint32_t type;
 } packet_header;
 
+/* PT_CONNECT payload */
+typedef struct {
+    char nickname[MAX_NICKNAME_LEN + 1];
+} connect_payload;
+
 /* PT_CONNECT_ACK payload */
 typedef struct {
     uint32_t snake_id;
     uint64_t server_tick_ms;
 } connect_ack_payload;
+
+/* PT_RESPAWN payload */
+typedef struct {
+    char nickname[MAX_NICKNAME_LEN + 1];
+} respawn_payload;
 
 /* PT_RESPAWN_ACK payload */
 typedef struct {
@@ -62,6 +73,7 @@ typedef struct {
 
 typedef struct {
     uint32_t id;
+    unsigned char nickname[MAX_NICKNAME_LEN + 1];
     uint32_t dir;
     uint32_t color;
     uint64_t npoints;

@@ -6,10 +6,15 @@
 #include "network.h"
 #include "client_internal.h"
 #include "render.h"
+#include "snake.h"
 
-static bool client_state_init(client_state* state, const char* hostname, const char* port)
+static bool client_state_init(client_state* state, const char* hostname, const char* port, const char* nickname)
 {
-    if (!client_connect(state, hostname, port)) {
+    memset(state->nickname, 0, sizeof(state->nickname));
+    if (nickname)
+        strncpy(state->nickname, nickname, MAX_NICKNAME_LEN);
+
+    if (!client_connect(state, hostname, port, state->nickname)) {
         fprintf(stderr, "client_connect failed\n");
         return false;
     }
@@ -76,10 +81,10 @@ void client_spectate_prev(client_state* state)
     }
 }
 
-bool client_run(const char* hostname, const char* port)
+bool client_run(const char* hostname, const char* port, const char* nickname)
 {
     client_state state;
-    if (!client_state_init(&state, hostname, port)) {
+    if (!client_state_init(&state, hostname, port, nickname)) {
         fprintf(stderr, "client_state_init failed\n");
         return false;
     }

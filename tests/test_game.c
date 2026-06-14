@@ -36,11 +36,12 @@ static void test_game_state(void)
 
     snake s1;
     uint32_t id1 = 1;
+    const char* nickname = NULL;
     int y = 5, x = 8;
     color_name color = GREEN;
     TEST_ASSERT_FALSE(game_state_add_snake(&gs, NULL));
     TEST_ASSERT_FALSE(game_state_add_snake(NULL, &s1));
-    TEST_ASSERT_TRUE(snake_init(&s1, id1, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s1, id1, nickname, DIR_UP, y, x, color));
     TEST_ASSERT(game_state_add_snake(&gs, &s1));
     TEST_ASSERT_NOT_NULL(gs.snakes);
     TEST_ASSERT_GREATER_OR_EQUAL(1, gs.snakes_capacity);
@@ -51,7 +52,7 @@ static void test_game_state(void)
     uint32_t id2 = 1;
     y = 3, x = 4;
     color = RED;
-    TEST_ASSERT_TRUE(snake_init(&s2, id2, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s2, id2, nickname, DIR_UP, y, x, color));
     TEST_ASSERT(game_state_add_snake(&gs, &s2));
     TEST_ASSERT_NOT_NULL(gs.snakes);
     TEST_ASSERT_GREATER_OR_EQUAL(2, gs.snakes_capacity);
@@ -73,9 +74,10 @@ static void test_game_check_collision(void)
 
     snake s1;
     uint32_t id1 = 1;
+    const char* nickname = NULL;
     int y = 2, x = 1;
     color_name color = GREEN;
-    TEST_ASSERT_TRUE(snake_init(&s1, id1, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s1, id1, nickname, DIR_UP, y, x, color));
     TEST_ASSERT_FALSE(game_check_collision(&gs, s1.body.points[0]));
     TEST_ASSERT_TRUE(game_state_add_snake(&gs, &s1));
     TEST_ASSERT_TRUE(game_check_collision(&gs, s1.body.points[0]));
@@ -85,7 +87,7 @@ static void test_game_check_collision(void)
     uint32_t id2 = 2;
     y = 2, x = 2;
     color = RED;
-    TEST_ASSERT_TRUE(snake_init(&s2, id2, DIR_UP, y, x, color));
+    TEST_ASSERT_TRUE(snake_init(&s2, id2, nickname, DIR_UP, y, x, color));
     TEST_ASSERT_TRUE(game_state_add_snake(&gs, &s2));
     TEST_ASSERT_TRUE(game_check_collision(&gs, (point){.y = 2, .x = 1}));
     TEST_ASSERT_TRUE(game_check_collision(&gs, (point){.y = 2, .x = 2}));

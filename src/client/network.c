@@ -42,7 +42,7 @@ static int open_clientfd(const char* hostname, const char* port)
         return clientfd;
 }
 
-bool client_connect(client_state* state, const char* hostname, const char* port)
+bool client_connect(client_state* state, const char* hostname, const char* port, const char* nickname)
 {
     if (!state || !hostname || !port)
         return false;
@@ -53,7 +53,13 @@ bool client_connect(client_state* state, const char* hostname, const char* port)
         return false;
     }
 
-    if (!send_packet(state->sockfd, PT_CONNECT, NULL, 0)) {
+    connect_payload conn_payload = { 0 };
+    if (nickname) {
+        strncpy(conn_payload.nickname, nickname, MAX_NICKNAME_LEN);
+    }
+
+    if (!send_packet(state->sockfd, PT_CONNECT, &conn_payload, sizeof(conn_payload))) {
+
         fprintf(stderr, "send_packet failed\n");
         close(state->sockfd);
         return false;

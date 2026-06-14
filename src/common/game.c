@@ -177,7 +177,7 @@ bool game_find_free_place_for_snake(game_state* gs, point* pos)
     return true;
 }
 
-bool game_add_snake(game_state* gs, uint32_t* snake_id)
+bool game_add_snake(game_state* gs, uint32_t* snake_id, const char nickname[MAX_NICKNAME_LEN + 1])
 {
     if (!gs || !snake_id)
         return false;
@@ -195,7 +195,7 @@ bool game_add_snake(game_state* gs, uint32_t* snake_id)
     }
 
     snake s;
-    if (!snake_init(&s, gs->next_snake_id, DIR_RIGHT, pos.y, pos.x, color)) {
+    if (!snake_init(&s, gs->next_snake_id, nickname, DIR_RIGHT, pos.y, pos.x, color)) {
         fprintf(stderr, "snake_init failed\n");
         return false;
     }

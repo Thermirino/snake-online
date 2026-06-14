@@ -3,7 +3,7 @@
 #include <string.h>
 #include <snake.h>
 
-bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color)
+bool snake_init(snake* s, int id, const char nickname[MAX_NICKNAME_LEN + 1], direction dir, int y, int x, color_name color)
 {
     if (!s)
         return false;
@@ -11,6 +11,11 @@ bool snake_init(snake* s, int id, direction dir, int y, int x, color_name color)
     if (id < 0)
         return false;
     s->id = id;
+
+    memset(s->nickname, 0, sizeof(s->nickname));
+    if (nickname) {
+        strncpy(s->nickname, nickname, MAX_NICKNAME_LEN);
+    }
 
     if (dir < 0 || dir > 3) {
         fprintf(stderr, "Invalid direction value: %d\n", s->dir);

@@ -3,6 +3,6 @@
 
 #include <stdbool.h>
 
-bool client_run(const char* hostname, const char* port);
+bool client_run(const char* hostname, const char* port, const char* nickname);
 
 #endif
