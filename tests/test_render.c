@@ -25,11 +25,13 @@ void test_render_grid(void)
     int w = 1024;
     int h = 512;
     render_context rctx;
+    camera cam;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
+    camera_init(&cam, w, h);
     TEST_ASSERT_NOT_NULL(rctx.window);
     TEST_ASSERT_NOT_NULL(rctx.renderer);
-    TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
+    TEST_ASSERT_TRUE(render_grid(&rctx, &cam, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }
@@ -47,12 +49,14 @@ void test_render_snake(void)
                  .body.size = 5,
                  .color = GREEN};
     render_context rctx;
+    camera cam;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
+    camera_init(&cam, w, h);
     TEST_ASSERT_NOT_NULL(rctx.window);
     TEST_ASSERT_NOT_NULL(rctx.renderer);
-    TEST_ASSERT_TRUE(render_snake(&rctx, &sn, NULL, 0.0));
-    TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
+    TEST_ASSERT_TRUE(render_snake(&rctx, &cam, &sn, NULL, 0.0));
+    TEST_ASSERT_TRUE(render_grid(&rctx, &cam, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }
@@ -78,10 +82,12 @@ void test_render_snakes(void)
                  .color = ORANGE};
     snake snakes[] = { s1, s2, s3 };
     render_context rctx;
+    camera cam;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
-    TEST_ASSERT_TRUE(render_snakes(&rctx, snakes, sizeof(snakes)/sizeof(*snakes), NULL, 0, 0.0));
-    TEST_ASSERT_TRUE(render_grid(&rctx, &(board){ .height = 15, .width = 40 }));
+    camera_init(&cam, w, h);
+    TEST_ASSERT_TRUE(render_snakes(&rctx, &cam, snakes, sizeof(snakes)/sizeof(*snakes), NULL, 0, 0.0));
+    TEST_ASSERT_TRUE(render_grid(&rctx, &cam, &(board){ .height = 15, .width = 40 }));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }
@@ -115,9 +121,11 @@ void test_render_game(void)
     };
     game_state prev_gs = gs;
     render_context rctx;
+    camera cam;
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
-    TEST_ASSERT_TRUE(render_game(&rctx, &gs, &prev_gs, 1, 1, 0.0, 0.0));
+    camera_init(&cam, w, h);
+    TEST_ASSERT_TRUE(render_game(&rctx, &cam, &gs, &prev_gs, 1, 1, 0.0, 0.0));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }

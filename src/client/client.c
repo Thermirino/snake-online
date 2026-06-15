@@ -8,7 +8,7 @@
 #include "render.h"
 #include "snake.h"
 
-static bool client_state_init(client_state* state, const char* hostname, const char* port, const char* nickname)
+static bool client_state_init(client_state* state, const char* hostname, const char* port, const char* nickname, int win_width, int win_height)
 {
     memset(state->nickname, 0, sizeof(state->nickname));
     if (nickname)
@@ -26,11 +26,13 @@ static bool client_state_init(client_state* state, const char* hostname, const c
         fprintf(stderr, "game_state_init failed\n");
     }
 
-    if (!render_init(&state->rctx, state->gs.brd.width, state->gs.brd.height)) {
+    if (!render_init(&state->rctx, win_width, win_height)) {
         fprintf(stderr, "render_init failed\n");
         client_disconnect(state);
         return false;
     }
+
+    camera_init(&state->cam, win_width, win_height);
 
     state->time_since_last_tick = 0.0;
     return true;
@@ -81,10 +83,10 @@ void client_spectate_prev(client_state* state)
     }
 }
 
-bool client_run(const char* hostname, const char* port, const char* nickname)
+bool client_run(const char* hostname, const char* port, const char* nickname, int win_width, int win_height)
 {
     client_state state;
-    if (!client_state_init(&state, hostname, port, nickname)) {
+    if (!client_state_init(&state, hostname, port, nickname, win_width, win_height)) {
         fprintf(stderr, "client_state_init failed\n");
         return false;
     }
@@ -114,7 +116,7 @@ bool client_run(const char* hostname, const char* port, const char* nickname)
         if (interp_factor > 1.5)
             interp_factor = 1.0;
 
-        if (!render_game(&state.rctx, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, dt, interp_factor)) {
+        if (!render_game(&state.rctx, &state.cam, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
             rc = false;
             break;

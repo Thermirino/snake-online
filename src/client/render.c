@@ -36,7 +36,8 @@ static const SDL_Color colors[] = {
 static SDL_Color get_color(color_name cname);
 static bool set_color(render_context* rctx, color_name cname);
 static bool set_colora(render_context* rctx, color_name cname, int alpha);
-static void update_camera_size(render_context* rctx);
+
+static void center_camera(camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor);
 
 bool render_init(render_context* rctx, int win_width, int win_height)
 {
@@ -57,15 +58,6 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     }
     rctx->win_width = win_width;
     rctx->win_height = win_height;
-    rctx->cell_size = win_height / 20;
-
-    rctx->camera_y = 0.0;
-    rctx->camera_x = 0.0;
-    rctx->camera_w = (double)rctx->win_width / rctx->cell_size;
-    rctx->camera_h = (double)rctx->win_height / rctx->cell_size;
-    rctx->camera_mode = CAMERA_FOLLOW;
-
-    rctx->zoom = 1.0;
 
     rctx->colors.background = WHITE;
     rctx->colors.grid = BLACK;
@@ -186,9 +178,9 @@ static bool set_colora(render_context* rctx, color_name cname, int alpha)
     return true;
 }
 
-bool render_grid(render_context* rctx, const board* brd)
+bool render_grid(render_context* rctx, camera* cam, const board* brd)
 {
-    if (!rctx || !brd)
+    if (!rctx || !cam || !brd)
         return false;
 
     if (!set_color(rctx, rctx->colors.grid)) {
@@ -196,18 +188,18 @@ bool render_grid(render_context* rctx, const board* brd)
         return false;
     }
 
-    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    double scaled_cell_size = cam->cell_size * cam->zoom;
     SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
-    for (int cy = rctx->camera_y; cy <= rctx->camera_y + rctx->camera_h; cy++) {
-        for (int cx = rctx->camera_x; cx <= rctx->camera_x + rctx->camera_w; cx++) {
+    for (int cy = cam->y; cy <= cam->y + cam->h; cy++) {
+        for (int cx = cam->x; cx <= cam->x + cam->w; cx++) {
 
             if (cy < 0 || cx < 0 ||
                 cy >= brd->height || cx >= brd->width)
                 continue;
 
-            rect.x = (cx - rctx->camera_x) * scaled_cell_size;
-            rect.y = (cy - rctx->camera_y) * scaled_cell_size;
+            rect.x = (cx - cam->x) * scaled_cell_size;
+            rect.y = (cy - cam->y) * scaled_cell_size;
             if (SDL_RenderDrawRectF(rctx->renderer, &rect) < 0) {
                 fprintf(stderr, "SDL_RenderDrawRect: %s\n",
                         SDL_GetError());
@@ -218,7 +210,7 @@ bool render_grid(render_context* rctx, const board* brd)
     return true;
 }
 
-bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, double interp_factor)
+bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake* prev_s, double interp_factor)
 {
     if (!rctx || !s)
         return false;
@@ -228,7 +220,7 @@ bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, dou
         return false;
     }
 
-    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    double scaled_cell_size = cam->cell_size * cam->zoom;
     SDL_FRect rect = { .x = 0, .y = 0,
         .w = scaled_cell_size, .h = scaled_cell_size };
 
@@ -248,8 +240,8 @@ bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, dou
             target_y = p->y;
         }
 
-        rect.x = (target_x - rctx->camera_x) * scaled_cell_size;
-        rect.y = (target_y - rctx->camera_y) * scaled_cell_size;
+        rect.x = (target_x - cam->x) * scaled_cell_size;
+        rect.y = (target_y - cam->y) * scaled_cell_size;
 
         if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
@@ -260,7 +252,7 @@ bool render_snake(render_context* rctx, const snake* s, const snake* prev_s, dou
     return true;
 }
 
-bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size, const snake* prev_snakes, size_t prev_snakes_size, double interp_factor)
+bool render_snakes(render_context* rctx, camera* cam, const snake* snakes, size_t snakes_size, const snake* prev_snakes, size_t prev_snakes_size, double interp_factor)
 {
     for (size_t i = 0; i < snakes_size; i++) {
         const snake* s = &snakes[i];
@@ -273,7 +265,7 @@ bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size
             }
         }
 
-        if (!render_snake(rctx, s, prev_s, interp_factor)) {
+        if (!render_snake(rctx, cam, s, prev_s, interp_factor)) {
             fprintf(stderr, "render_snake failed\n");
             return false;
         }
@@ -281,19 +273,19 @@ bool render_snakes(render_context* rctx, const snake* snakes, size_t snakes_size
     return true;
 }
 
-bool render_food(render_context* rctx, point* food, size_t size)
+bool render_food(render_context* rctx, camera* cam, point* food, size_t size)
 {
     if (!set_color(rctx, rctx->colors.food)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
 
-    double scaled_cell_size = rctx->cell_size * rctx->zoom;
+    double scaled_cell_size = cam->cell_size * cam->zoom;
     SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
     for (size_t i = 0; i < size; i++) {
-        rect.x = (food[i].x - rctx->camera_x) * scaled_cell_size;
-        rect.y = (food[i].y - rctx->camera_y) * scaled_cell_size;
+        rect.x = (food[i].x - cam->x) * scaled_cell_size;
+        rect.y = (food[i].y - cam->y) * scaled_cell_size;
 
         if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
@@ -304,76 +296,10 @@ bool render_food(render_context* rctx, point* food, size_t size)
     return true;
 }
 
-static void center_camera(render_context* rctx, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor)
-{
-    snake* s = game_find_snake((game_state*)gs, snake_id);
-    if (!s) {
-        return;
-    }
-    snake* prev_s = game_find_snake((game_state*)prev_gs, snake_id);
-    if (!prev_s)
-        prev_s = s;
-
-    double target_x;
-    double target_y;
-
-    if (rctx->camera_w >= gs->brd.width + BORDER_SIZE * 2) {
-        target_x = -(rctx->camera_w - gs->brd.width) / 2.0;
-    } else {
-        double prev_shead_x = prev_s->body.points[0].x;
-        double shead_x = s->body.points[0].x;
-        double target_shead_x = prev_shead_x + (shead_x - prev_shead_x) * interp_factor;
-        target_x = target_shead_x - rctx->camera_w / 2.0;
-
-        if (target_x < -BORDER_SIZE)
-            target_x = -BORDER_SIZE;
-        else if (target_x >= gs->brd.width - rctx->camera_w + BORDER_SIZE)
-            target_x = gs->brd.width - rctx->camera_w + BORDER_SIZE;
-    }
-    
-    if (rctx->camera_h >= gs->brd.height + BORDER_SIZE * 2) {
-        target_y = -(rctx->camera_h - gs->brd.height) / 2.0;
-    } else {
-        double prev_shead_y = prev_s->body.points[0].y;
-        double shead_y = s->body.points[0].y;
-        double target_shead_y = prev_shead_y + (shead_y - prev_shead_y) * interp_factor;
-        target_y = target_shead_y - rctx->camera_h / 2.0;
-
-        if (target_y < -BORDER_SIZE)
-            target_y = -BORDER_SIZE;
-        else if (target_y >= gs->brd.height - rctx->camera_h + BORDER_SIZE)
-            target_y = gs->brd.height - rctx->camera_h + BORDER_SIZE;
-    }
-
-    rctx->camera_x += (target_x - rctx->camera_x) * FOLLOW_CAMERA_SPEED * dt;
-    rctx->camera_y += (target_y - rctx->camera_y) * FOLLOW_CAMERA_SPEED * dt;
-}
-
-static void update_camera_size(render_context* rctx)
-{
-    double scaled_cell_size = rctx->cell_size * rctx->zoom;
-    rctx->camera_w = rctx->win_width  / scaled_cell_size;
-    rctx->camera_h = rctx->win_height / scaled_cell_size;
-}
-
-void render_set_zoom(render_context* rctx, double zoom)
-{
-    if (zoom < MIN_ZOOM)
-        zoom = MIN_ZOOM;
-    if (zoom > MAX_ZOOM)
-        zoom = MAX_ZOOM;
-
-    rctx->zoom = zoom;
-
-    update_camera_size(rctx);
-}
-
 bool render_resize_window(render_context* rctx, int win_width, int win_height)
 {
     rctx->win_width = win_width;
     rctx->win_height = win_height;
-
-    update_camera_size(rctx);
     return true;
 }
 
@@ -416,8 +342,7 @@ bool render_free_camera_label(render_context* rctx)
     return true;
 }
 
-bool render_game(render_context* rctx, const game_state* gs, const game_state* prev_gs, 
-                 uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor)
+bool render_game(render_context* rctx, camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor)
 {
     if (!set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -428,18 +353,18 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
                 SDL_GetError());
     }
 
-    if (rctx->camera_mode == CAMERA_FOLLOW)
-        center_camera(rctx, gs, prev_gs, spectate_snake_id, dt, interp_factor);
+    if (cam->mode == CAMERA_FOLLOW)
+        center_camera(cam, gs, prev_gs, spectate_snake_id, dt, interp_factor);
 
-    if (!render_snakes(rctx, gs->snakes, gs->snakes_size, prev_gs->snakes, prev_gs->snakes_size, interp_factor)) {
+    if (!render_snakes(rctx, cam, gs->snakes, gs->snakes_size, prev_gs->snakes, prev_gs->snakes_size, interp_factor)) {
         fprintf(stderr, "render_snakes failed\n");
         return false;
     }
-    if (!render_food(rctx, gs->food, gs->food_size)) {
+    if (!render_food(rctx, cam, gs->food, gs->food_size)) {
         fprintf(stderr, "render_food failed\n");
         return false;
     }
-    if (!render_grid(rctx, &gs->brd)) {
+    if (!render_grid(rctx, cam, &gs->brd)) {
         fprintf(stderr, "render_grid failed\n");
         return false;
     }
@@ -448,7 +373,7 @@ bool render_game(render_context* rctx, const game_state* gs, const game_state* p
         return false;
     }
 
-    if (rctx->camera_mode == CAMERA_FREE) {
+    if (cam->mode == CAMERA_FREE) {
         if (!render_free_camera_label(rctx)) {
             fprintf(stderr, "render_free_camera_label failed\n");
             return false;
@@ -669,4 +594,79 @@ bool render_game_over(render_context* rctx)
     }
 
     return true;
+}
+
+void camera_init(camera* cam, int win_width, int win_height)
+{
+    cam->cell_size = win_height / 20;
+    cam->y = 0.0;
+    cam->x = 0.0;
+    cam->w = (double)win_width / cam->cell_size;
+    cam->h = (double)win_height / cam->cell_size;
+    cam->mode = CAMERA_FOLLOW;
+    cam->zoom = 1.0;
+}
+
+void camera_resize(camera* cam, int win_width, int win_height)
+{
+    double scaled_cell_size = cam->cell_size * cam->zoom;
+    cam->w = win_width  / scaled_cell_size;
+    cam->h = win_height / scaled_cell_size;
+}
+
+void camera_set_zoom(camera* cam, double zoom, int win_width, int win_height)
+{
+    if (zoom < MIN_ZOOM)
+        zoom = MIN_ZOOM;
+    if (zoom > MAX_ZOOM)
+        zoom = MAX_ZOOM;
+
+    cam->zoom = zoom;
+
+    camera_resize(cam, win_width, win_height);
+}
+
+static void center_camera(camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor)
+{
+    snake* s = game_find_snake((game_state*)gs, snake_id);
+    if (!s) {
+        return;
+    }
+    snake* prev_s = game_find_snake((game_state*)prev_gs, snake_id);
+    if (!prev_s)
+        prev_s = s;
+
+    double target_x;
+    double target_y;
+
+    if (cam->w >= gs->brd.width + BORDER_SIZE * 2) {
+        target_x = -(cam->w - gs->brd.width) / 2.0;
+    } else {
+        double prev_shead_x = prev_s->body.points[0].x;
+        double shead_x = s->body.points[0].x;
+        double target_shead_x = prev_shead_x + (shead_x - prev_shead_x) * interp_factor;
+        target_x = target_shead_x - cam->w / 2.0;
+
+        if (target_x < -BORDER_SIZE)
+            target_x = -BORDER_SIZE;
+        else if (target_x >= gs->brd.width - cam->w + BORDER_SIZE)
+            target_x = gs->brd.width - cam->w + BORDER_SIZE;
+    }
+    
+    if (cam->h >= gs->brd.height + BORDER_SIZE * 2) {
+        target_y = -(cam->h - gs->brd.height) / 2.0;
+    } else {
+        double prev_shead_y = prev_s->body.points[0].y;
+        double shead_y = s->body.points[0].y;
+        double target_shead_y = prev_shead_y + (shead_y - prev_shead_y) * interp_factor;
+        target_y = target_shead_y - cam->h / 2.0;
+
+        if (target_y < -BORDER_SIZE)
+            target_y = -BORDER_SIZE;
+        else if (target_y >= gs->brd.height - cam->h + BORDER_SIZE)
+            target_y = gs->brd.height - cam->h + BORDER_SIZE;
+    }
+
+    cam->x += (target_x - cam->x) * FOLLOW_CAMERA_SPEED * dt;
+    cam->y += (target_y - cam->y) * FOLLOW_CAMERA_SPEED * dt;
 }

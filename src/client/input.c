@@ -1,11 +1,7 @@
 #include <SDL.h>
-#include <SDL_events.h>
-#include <SDL_scancode.h>
-#include <SDL_video.h>
 #include <protocol.h>
 #include "client_internal.h"
 #include "input.h"
-#include "network.h"
 #include "render.h"
 #include "snake.h"
 
@@ -28,40 +24,40 @@ bool process_input(client_state* state, bool* quit, double dt)
                     break;
 
                 if (event.key.keysym.sym == SDLK_UP) {
-                    if (state->rctx.camera_mode == CAMERA_FOLLOW &&
+                    if (state->cam.mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_UP;
                         change_direction = true;
                     }
                 } else if (event.key.keysym.sym == SDLK_DOWN) {
-                    if (state->rctx.camera_mode == CAMERA_FOLLOW &&
+                    if (state->cam.mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_DOWN;
                         change_direction = true;
                     }
                 } else if (event.key.keysym.sym == SDLK_RIGHT) {
-                    if (state->rctx.camera_mode == CAMERA_FOLLOW &&
+                    if (state->cam.mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_RIGHT;
                         change_direction = true;
-                    } else if (state->rctx.camera_mode == CAMERA_FOLLOW) {
+                    } else if (state->cam.mode == CAMERA_FOLLOW) {
                         // state->snake_id == SNAKE_ID_INVALID
                         client_spectate_next(state);
                     }
                 } else if (event.key.keysym.sym == SDLK_LEFT) {
-                    if (state->rctx.camera_mode == CAMERA_FOLLOW &&
+                    if (state->cam.mode == CAMERA_FOLLOW &&
                         state->snake_id != SNAKE_ID_INVALID) {
                         dir = DIR_LEFT;
                         change_direction = true;
-                    } else if (state->rctx.camera_mode == CAMERA_FOLLOW) {
+                    } else if (state->cam.mode == CAMERA_FOLLOW) {
                         // state->snake_id == SNAKE_ID_INVALID
                         client_spectate_prev(state);
                     }
                 } else if (event.key.keysym.sym == SDLK_c) {
-                    if (state->rctx.camera_mode == CAMERA_FOLLOW)
-                        state->rctx.camera_mode = CAMERA_FREE;
+                    if (state->cam.mode == CAMERA_FOLLOW)
+                        state->cam.mode = CAMERA_FREE;
                     else
-                        state->rctx.camera_mode = CAMERA_FOLLOW;
+                        state->cam.mode = CAMERA_FOLLOW;
                 } else if (event.key.keysym.sym == SDLK_r &&
                            state->snake_id == SNAKE_ID_INVALID) {
 
@@ -79,9 +75,9 @@ bool process_input(client_state* state, bool* quit, double dt)
                 break;
             case SDL_MOUSEWHEEL:
                 if (event.wheel.y > 0)
-                    render_set_zoom(&state->rctx, state->rctx.zoom * 1.1);
+                    camera_set_zoom(&state->cam, state->cam.zoom * 1.1, state->rctx.win_width, state->rctx.win_height);
                 else if (event.wheel.y < 0)
-                    render_set_zoom(&state->rctx, state->rctx.zoom / 1.1);
+                    camera_set_zoom(&state->cam, state->cam.zoom / 1.1, state->rctx.win_width, state->rctx.win_height);
 
                 break;
             case SDL_WINDOWEVENT:
@@ -92,6 +88,7 @@ bool process_input(client_state* state, bool* quit, double dt)
                         fprintf(stderr, "render_resize_window failed\n");
                         return false;
                     }
+                    camera_resize(&state->cam, width, height);
                 }
                 break;
         }
@@ -99,23 +96,23 @@ bool process_input(client_state* state, bool* quit, double dt)
 
     const Uint8* keystate = SDL_GetKeyboardState(NULL);
     if (keystate[SDL_SCANCODE_UP]) {
-        if (state->rctx.camera_mode == CAMERA_FREE) {
-            state->rctx.camera_y -= FREE_CAMERA_SPEED * dt;
+        if (state->cam.mode == CAMERA_FREE) {
+            state->cam.y -= FREE_CAMERA_SPEED * dt;
         }
     }
     if (keystate[SDL_SCANCODE_DOWN]) {
-        if (state->rctx.camera_mode == CAMERA_FREE) {
-            state->rctx.camera_y += FREE_CAMERA_SPEED * dt;
+        if (state->cam.mode == CAMERA_FREE) {
+            state->cam.y += FREE_CAMERA_SPEED * dt;
         }
     }
     if (keystate[SDL_SCANCODE_RIGHT]) {
-        if (state->rctx.camera_mode == CAMERA_FREE) {
-            state->rctx.camera_x += FREE_CAMERA_SPEED * dt;
+        if (state->cam.mode == CAMERA_FREE) {
+            state->cam.x += FREE_CAMERA_SPEED * dt;
         }
     }
     if (keystate[SDL_SCANCODE_LEFT]) {
-        if (state->rctx.camera_mode == CAMERA_FREE) {
-            state->rctx.camera_x -= FREE_CAMERA_SPEED * dt;
+        if (state->cam.mode == CAMERA_FREE) {
+            state->cam.x -= FREE_CAMERA_SPEED * dt;
         }
     }
 

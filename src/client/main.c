@@ -14,7 +14,10 @@ int main(int argc, char* argv[])
     if (argc == 4)
         nickname = argv[3];
 
-    if (!client_run(host, port, nickname))
+    int win_width = 1024;
+    int win_height = 512;
+
+    if (!client_run(host, port, nickname, win_width, win_height))
         return -1;
     return 0;
 }

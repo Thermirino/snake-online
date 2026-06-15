@@ -19,6 +19,7 @@ typedef struct {
     game_state gs;
     game_state prev_gs;
     render_context rctx;
+    camera cam;
 
     double time_since_last_tick;
 } client_state;

@@ -140,7 +140,7 @@ static bool handle_packet(client_state* state,
             respawn_ack_payload* rpayload = payload;
             state->snake_id = be32toh(rpayload->snake_id);
             state->spectate_snake_id = state->snake_id;
-            state->rctx.camera_mode = CAMERA_FOLLOW;
+            state->cam.mode = CAMERA_FOLLOW;
             break;
         default:
             fprintf(stderr, "Invalid packet type (%d)\n",
