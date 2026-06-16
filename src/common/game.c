@@ -332,11 +332,6 @@ static bool check_snake_collisions(game_state* gs,
         return false;
     }
 
-    size_t* dead_snake_indexes = malloc(gs->snakes_size * sizeof(size_t));
-    if (!dead_snake_indexes) {
-        perror("malloc");
-        return false;
-    }
     *ndead = 0;
 
     bool dead;
@@ -347,7 +342,6 @@ static bool check_snake_collisions(game_state* gs,
 
         // out of bounds
         if (game_is_out_of_bounds(gs, *head)) {
-            dead_snake_indexes[*ndead] = i;
             (*dead_snake_ids)[(*ndead)++] = s1->id;
             dead = true;
             continue;
@@ -357,7 +351,6 @@ static bool check_snake_collisions(game_state* gs,
         for (size_t j = 1; j < s1->body.size; j++) {
             if (s1->body.points[j].x == head->x &&
                 s1->body.points[j].y == head->y) {
-                dead_snake_indexes[*ndead] = i;
                 (*dead_snake_ids)[(*ndead)++] = s1->id;
                 dead = true;
                 break;
@@ -375,7 +368,6 @@ static bool check_snake_collisions(game_state* gs,
             for (size_t k = 0; k < s2->body.size; k++) {
                 if (head->x == s2->body.points[k].x &&
                     head->y == s2->body.points[k].y) {
-                    dead_snake_indexes[*ndead] = i;
                     (*dead_snake_ids)[(*ndead)++] = s1->id;
                     dead = true;
                     break;
@@ -388,17 +380,14 @@ static bool check_snake_collisions(game_state* gs,
     }
 
     for (size_t i = 0; i < *ndead; i++) {
-        size_t snake_index = dead_snake_indexes[i];
-        if (!game_delete_snake_by_index(gs, snake_index)) {
-            fprintf(stderr, "game_delete_snake_by_id failed\n");
-            free(dead_snake_indexes);
+        if (!game_delete_snake_by_id(gs, (*dead_snake_ids)[i])) {
+            fprintf(stderr, "game_delete_snake_by_index failed\n");
             free(*dead_snake_ids);
             *ndead = 0;
             return false;
         }
     }
 
-    free(dead_snake_indexes);
     if (*ndead == 0)
         free(*dead_snake_ids);
 
