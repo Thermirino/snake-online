@@ -8,7 +8,7 @@
 #include "render.h"
 #include "snake.h"
 
-static client_run_status client_state_init(client_state* state, render_context* rctx, const char* hostname, const char* port, const char* nickname, int win_width, int win_height, const char** error_text)
+static client_run_status client_state_init(client_state* state, render_context* rctx, const char* hostname, const char* port, const char* nickname, const char** error_text)
 {
     memset(state->nickname, 0, sizeof(state->nickname));
     if (nickname)
@@ -34,7 +34,7 @@ static client_run_status client_state_init(client_state* state, render_context* 
     }
 
     state->rctx = *rctx;
-    camera_init(&state->cam, win_width, win_height);
+    camera_init(&state->cam, rctx->win_width, rctx->win_height);
 
     state->time_since_last_tick = 0.0;
     return CLIENT_RUN_OK;
@@ -84,12 +84,12 @@ void client_spectate_prev(client_state* state)
     }
 }
 
-client_run_status client_run(render_context* rctx, const char* hostname, const char* port, const char* nickname, int win_width, int win_height, const char** error_text)
+client_run_status client_run(render_context* rctx, const char* hostname, const char* port, const char* nickname, const char** error_text)
 {
     client_run_status status;
     client_state state;
 
-    if ((status = client_state_init(&state, rctx, hostname, port, nickname, win_width, win_height, error_text)) != CLIENT_RUN_OK) {
+    if ((status = client_state_init(&state, rctx, hostname, port, nickname, error_text)) != CLIENT_RUN_OK) {
         return status;
     }
 

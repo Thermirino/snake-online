@@ -295,7 +295,7 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
             }
 
             int text_x = rect.x + rect.w / 2 - text_w / 2;
-            int text_y = rect.y - text_h - 5;
+            int text_y = rect.y - text_h - scaled_cell_size / 2;
             if (!render_text_outline(rctx, rctx->font_medium_bold, rctx->font_medium_bold_outline, s->nickname, text_x, text_y, s->color, BLACK)) {
                 fprintf(stderr, "render_text failed\n");
                 return false;

@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 
         error_text = NULL;
         client_run_status status;
-        if ((status = client_run(&rctx, host, port, nickname, win_width, win_height, &error_text)) != CLIENT_RUN_OK) {
+        if ((status = client_run(&rctx, host, port, nickname, &error_text)) != CLIENT_RUN_OK) {
             if (status != CLIENT_RUN_ERR_CONN) {
                 fprintf(stderr, "client_run failed\n");
                 return -1;
