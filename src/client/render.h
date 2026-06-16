@@ -34,8 +34,15 @@ typedef struct render_context {
     SDL_Window* window;
     SDL_Renderer* renderer;
     TTF_Font* font_small;
+    TTF_Font* font_small_bold;
+
     TTF_Font* font_medium;
+    TTF_Font* font_medium_bold;
+    TTF_Font* font_medium_bold_outline;
+
     TTF_Font* font_large;
+    TTF_Font* font_large_bold;
+
 
     int win_width;              // in pixels
     int win_height;             // in pixels
@@ -61,6 +68,7 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
 bool render_snakes(render_context* rctx, camera* cam, const snake* snakes, size_t snakes_size, const snake* prev_snakes, size_t prev_snakes_size, double interp_factor);
 bool render_food(render_context* rctx, camera* cam, point* food, size_t size);
 bool render_text(render_context* rctx, TTF_Font* font, const char* text, int x, int y, color_name cname);
+bool render_text_outline(render_context* rctx, TTF_Font* font, TTF_Font* outline_font, const char* text, int x, int y, color_name fg, color_name outline);
 bool render_leaderboard(render_context* rctx, const game_state* gs);
 bool render_free_camera_label(render_context* rctx);
 bool render_game_over(render_context* rctx);

@@ -45,8 +45,12 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     rctx->window = NULL;
     rctx->renderer = NULL;
     rctx->font_small = NULL;
+    rctx->font_small_bold = NULL;
     rctx->font_medium = NULL;
+    rctx->font_medium_bold = NULL;
+    rctx->font_medium_bold_outline = NULL;
     rctx->font_large = NULL;
+    rctx->font_large_bold = NULL;
 
     if (win_width <= 0) {
         win_width = 1024;
@@ -100,18 +104,49 @@ bool render_init(render_context* rctx, int win_width, int win_height)
         fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
         goto failed;
     }
+
+    rctx->font_small_bold = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_small_bold == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    TTF_SetFontStyle(rctx->font_small_bold, TTF_STYLE_BOLD);
+
     font_size = 28;
     rctx->font_medium = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
     if (rctx->font_medium == NULL) {
         fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
         goto failed;
     }
+
+    rctx->font_medium_bold = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_medium_bold == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    TTF_SetFontStyle(rctx->font_medium_bold, TTF_STYLE_BOLD);
+
+    rctx->font_medium_bold_outline = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_medium_bold_outline == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    TTF_SetFontStyle(rctx->font_medium_bold_outline, TTF_STYLE_BOLD);
+    TTF_SetFontOutline(rctx->font_medium_bold_outline, 2);
+
     font_size = 32;
     rctx->font_large = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
     if (rctx->font_large == NULL) {
         fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
         goto failed;
     }
+
+    rctx->font_large_bold = TTF_OpenFont("assets/fonts/sans.ttf", font_size);
+    if (rctx->font_large_bold == NULL) {
+        fprintf(stderr, "TTF_OpenFont: %s\n", TTF_GetError());
+        goto failed;
+    }
+    TTF_SetFontStyle(rctx->font_large_bold, TTF_STYLE_BOLD);
 
     if (SDL_SetRenderDrawBlendMode(rctx->renderer, SDL_BLENDMODE_BLEND) < 0) {
         fprintf(stderr, "SDL_SetRenderDrawBlendMode: %s\n",
@@ -128,8 +163,12 @@ bool render_init(render_context* rctx, int win_width, int win_height)
 
 failed:
     TTF_CloseFont(rctx->font_small);
+    TTF_CloseFont(rctx->font_small_bold);
     TTF_CloseFont(rctx->font_medium);
+    TTF_CloseFont(rctx->font_medium_bold);
+    TTF_CloseFont(rctx->font_medium_bold_outline);
     TTF_CloseFont(rctx->font_large);
+    TTF_CloseFont(rctx->font_large_bold);
     TTF_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
@@ -143,8 +182,12 @@ void render_destroy(render_context* rctx)
         return;
 
     TTF_CloseFont(rctx->font_small);
+    TTF_CloseFont(rctx->font_small_bold);
     TTF_CloseFont(rctx->font_medium);
+    TTF_CloseFont(rctx->font_medium_bold);
+    TTF_CloseFont(rctx->font_medium_bold_outline);
     TTF_CloseFont(rctx->font_large);
+    TTF_CloseFont(rctx->font_large_bold);
     TTF_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
@@ -243,6 +286,21 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
 
         rect.x = (target_x - cam->x) * scaled_cell_size;
         rect.y = (target_y - cam->y) * scaled_cell_size;
+
+        if (i == 0 && s->nickname[0]) {
+            int text_w, text_h;
+            if (TTF_SizeUTF8(rctx->font_medium_bold, s->nickname, &text_w, &text_h) != 0) {
+                fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+                return false;
+            }
+
+            int text_x = rect.x + rect.w / 2 - text_w / 2;
+            int text_y = rect.y - text_h - 5;
+            if (!render_text_outline(rctx, rctx->font_medium_bold, rctx->font_medium_bold_outline, s->nickname, text_x, text_y, s->color, BLACK)) {
+                fprintf(stderr, "render_text failed\n");
+                return false;
+            }
+        }
 
         if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
             fprintf(stderr, "SDL_RenderFillRect: %s\n",
@@ -421,6 +479,21 @@ bool render_text(render_context* rctx, TTF_Font* font, const char* text,
     }
 
     SDL_DestroyTexture(texture);
+    return true;
+}
+
+bool render_text_outline(render_context* rctx, TTF_Font* font, TTF_Font* outline_font, const char* text, int x, int y, color_name fg, color_name outline)
+{
+    int outline_size = TTF_GetFontOutline(outline_font);
+
+    if (!render_text(rctx, outline_font, text, x - outline_size, y - outline_size, outline)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+    if (!render_text(rctx, font, text, x, y, fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
     return true;
 }
 
