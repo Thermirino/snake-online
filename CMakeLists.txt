@@ -115,7 +115,8 @@ add_library(snake_client STATIC
                             src/client/render.c
                             src/client/network.c
                             src/client/input.c
-                            src/client/client.c)
+                            src/client/client.c
+                            src/client/menu.c)
 target_include_directories(snake_client 
                                 PUBLIC include
                                 PRIVATE src/client)

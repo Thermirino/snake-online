@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <unistd.h>
 #include <poll.h>
 #include <sys/socket.h>
@@ -11,7 +12,7 @@
 #include "snake.h"
 #include <protocol.h>
 
-static int open_clientfd(const char* hostname, const char* port)
+static int open_clientfd(const char* hostname, const char* port, const char** error_text)
 {
     int clientfd;
     struct addrinfo hints, *listp, *p;
@@ -22,16 +23,21 @@ static int open_clientfd(const char* hostname, const char* port)
     hints.ai_flags |= AI_ADDRCONFIG;
     int rc;
     if ((rc = getaddrinfo(hostname, port, &hints, &listp))) {
-        fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rc));
+        *error_text = gai_strerror(rc);
         return -1;
     }
 
     for (p = listp; p; p = p->ai_next) {
-        if ((clientfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0)
+        if ((clientfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) < 0) {
+            *error_text = strerror(errno);
             continue;
+        }
 
-        if (connect(clientfd, p->ai_addr, p->ai_addrlen) != -1)
+        if (connect(clientfd, p->ai_addr, p->ai_addrlen) == -1) {
+            *error_text = strerror(errno);
+        } else {
             break;
+        }
         close(clientfd);
     }
 
@@ -42,15 +48,14 @@ static int open_clientfd(const char* hostname, const char* port)
         return clientfd;
 }
 
-bool client_connect(client_state* state, const char* hostname, const char* port, const char* nickname)
+client_conn_status client_connect(client_state* state, const char* hostname, const char* port, const char* nickname, const char** error_text)
 {
-    if (!state || !hostname || !port)
-        return false;
+    if (!state || !hostname || !port || !error_text)
+        return CLIENT_CONN_ERR_BAD_ARG;
 
-    state->sockfd = open_clientfd(hostname, port);
+    state->sockfd = open_clientfd(hostname, port, error_text);
     if (state->sockfd == -1) {
-        fprintf(stderr, "open_clientfd failed\n");
-        return false;
+        return CLIENT_CONN_ERR_CONNECT;
     }
 
     connect_payload conn_payload = { 0 };
@@ -62,7 +67,7 @@ bool client_connect(client_state* state, const char* hostname, const char* port,
 
         fprintf(stderr, "send_packet failed\n");
         close(state->sockfd);
-        return false;
+        return CLIENT_CONN_ERR_SEND;
     }
 
     packet_type ptype;
@@ -72,20 +77,20 @@ bool client_connect(client_state* state, const char* hostname, const char* port,
     if (status != RECV_OK) {
         fprintf(stderr, "recv_packet failed\n");
         close(state->sockfd);
-        return false;
+        return CLIENT_CONN_ERR_RECV;
     }
 
     if (ptype != PT_CONNECT_ACK) {
         fprintf(stderr, "Expected PT_CONNECT_ACK (ptype = %d)\n", ptype);
         free(payload);
         close(state->sockfd);
-        return false;
+        return CLIENT_CONN_ERR_INVALID_PACKET;
     }
     if (payload_size != sizeof(connect_ack_payload)) {
         fprintf(stderr, "Invalid payload size for a packet type PT_CONNECT_ACK\n");
         free(payload);
         close(state->sockfd);
-        return false;
+        return CLIENT_CONN_ERR_INVALID_PACKET;
     }
 
     connect_ack_payload* ack = payload;
@@ -94,7 +99,7 @@ bool client_connect(client_state* state, const char* hostname, const char* port,
     state->server_tick_ms = be64toh(ack->server_tick_ms);
     free(payload);
 
-    return true;
+    return CLIENT_CONN_OK;
 }
 
 void client_disconnect(client_state* state)

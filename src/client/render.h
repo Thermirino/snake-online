@@ -30,7 +30,7 @@ typedef enum {
     CAMERA_FREE
 } camera_mode;
 
-typedef struct {
+typedef struct render_context {
     SDL_Window* window;
     SDL_Renderer* renderer;
     TTF_Font* font_small;
@@ -65,6 +65,8 @@ bool render_leaderboard(render_context* rctx, const game_state* gs);
 bool render_free_camera_label(render_context* rctx);
 bool render_game_over(render_context* rctx);
 bool render_resize_window(render_context* rctx, int win_width, int win_height);
+bool render_set_color(render_context* rctx, color_name cname);
+bool render_set_colora(render_context* rctx, color_name cname, int alpha);
 
 void camera_init(camera* cam, int win_width, int win_height);
 void camera_resize(camera* cam, int win_width, int win_height);

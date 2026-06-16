@@ -34,8 +34,6 @@ static const SDL_Color colors[] = {
 
 /* prototypes of static functions */
 static SDL_Color get_color(color_name cname);
-static bool set_color(render_context* rctx, color_name cname);
-static bool set_colora(render_context* rctx, color_name cname, int alpha);
 
 static void center_camera(camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor);
 
@@ -120,7 +118,10 @@ bool render_init(render_context* rctx, int win_width, int win_height)
                 SDL_GetError());
         goto failed;
     }
-    set_color(rctx, WHITE);
+    if (!render_set_color(rctx, WHITE)) {
+        fprintf(stderr, "render_set_color failed\n");
+        return false;
+    }
     SDL_RenderClear(rctx->renderer);
 
     return true;
@@ -155,7 +156,7 @@ static SDL_Color get_color(color_name cname)
     return colors[cname];
 }
 
-static bool set_color(render_context* rctx, color_name cname)
+bool render_set_color(render_context* rctx, color_name cname)
 {
     SDL_Color color = get_color(cname);
     if (SDL_SetRenderDrawColor(rctx->renderer, color.r, color.g, color.b, color.a) < 0) {
@@ -166,7 +167,7 @@ static bool set_color(render_context* rctx, color_name cname)
     return true;
 }
 
-static bool set_colora(render_context* rctx, color_name cname, int alpha)
+bool render_set_colora(render_context* rctx, color_name cname, int alpha)
 {
     SDL_Color color = get_color(cname);
     color.a = alpha;
@@ -183,7 +184,7 @@ bool render_grid(render_context* rctx, camera* cam, const board* brd)
     if (!rctx || !cam || !brd)
         return false;
 
-    if (!set_color(rctx, rctx->colors.grid)) {
+    if (!render_set_color(rctx, rctx->colors.grid)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
@@ -215,7 +216,7 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
     if (!rctx || !s)
         return false;
 
-    if (!set_color(rctx, s->color)) {
+    if (!render_set_color(rctx, s->color)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
@@ -275,7 +276,7 @@ bool render_snakes(render_context* rctx, camera* cam, const snake* snakes, size_
 
 bool render_food(render_context* rctx, camera* cam, point* food, size_t size)
 {
-    if (!set_color(rctx, rctx->colors.food)) {
+    if (!render_set_color(rctx, rctx->colors.food)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
@@ -323,7 +324,7 @@ bool render_free_camera_label(render_context* rctx)
     rect.y = margin;
     rect.w = w + padding * 2;
     rect.h = h + padding * 2;
-    if (!set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
+    if (!render_set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
         fprintf(stderr, "set_colora failed\n");
         return false;
     }
@@ -344,7 +345,7 @@ bool render_free_camera_label(render_context* rctx)
 
 bool render_game(render_context* rctx, camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor)
 {
-    if (!set_color(rctx, rctx->colors.background)) {
+    if (!render_set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
         return false;
     }
@@ -454,7 +455,7 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
     rect.y = margin;
     rect.w = lb_width;
     rect.h = lb_height;
-    if (!set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
+    if (!render_set_colora(rctx, rctx->colors.leaderboard_bg, alpha)) {
         fprintf(stderr, "set_colora failed\n");
         return false;
     }
@@ -564,7 +565,7 @@ bool render_game_over(render_context* rctx)
     rect.y = rctx->win_height / 2 - h / 2 - padding;
     rect.w = w2 + padding * 2;
     rect.h = h + h2 + padding * 2;
-    if (!set_colora(rctx, rctx->colors.game_over_bg, alpha)) {
+    if (!render_set_colora(rctx, rctx->colors.game_over_bg, alpha)) {
         fprintf(stderr, "set_colora failed\n");
         return false;
     }

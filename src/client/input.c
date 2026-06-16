@@ -1,4 +1,5 @@
 #include <SDL.h>
+#include <SDL_keycode.h>
 #include <protocol.h>
 #include "client_internal.h"
 #include "input.h"
@@ -71,6 +72,9 @@ bool process_input(client_state* state, bool* quit, double dt)
                         fprintf(stderr, "send_packet failed\n");
                         return false;
                     }
+                } else if (event.key.keysym.sym == SDLK_ESCAPE) {
+                    *quit = true;
+                    break;
                 }
                 break;
             case SDL_MOUSEWHEEL:

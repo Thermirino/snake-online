@@ -8,34 +8,36 @@
 #include "render.h"
 #include "snake.h"
 
-static bool client_state_init(client_state* state, const char* hostname, const char* port, const char* nickname, int win_width, int win_height)
+static client_run_status client_state_init(client_state* state, render_context* rctx, const char* hostname, const char* port, const char* nickname, int win_width, int win_height, const char** error_text)
 {
     memset(state->nickname, 0, sizeof(state->nickname));
     if (nickname)
         strncpy(state->nickname, nickname, MAX_NICKNAME_LEN);
 
-    if (!client_connect(state, hostname, port, state->nickname)) {
+    client_conn_status status;
+    if ((status = client_connect(state, hostname, port, state->nickname, error_text)) != CLIENT_CONN_OK) {
+        if (status == CLIENT_CONN_ERR_CONNECT)
+            return CLIENT_RUN_ERR_CONN;
+
         fprintf(stderr, "client_connect failed\n");
-        return false;
+        return CLIENT_RUN_ERROR;
     }
 
     if (!game_state_init(&state->gs, 0, 0)) {
         fprintf(stderr, "game_state_init failed\n");
+        return CLIENT_RUN_ERROR;
     }
     if (!game_state_init(&state->prev_gs, 0, 0)) {
+        game_state_destroy(&state->gs);
         fprintf(stderr, "game_state_init failed\n");
+        return CLIENT_RUN_ERROR;
     }
 
-    if (!render_init(&state->rctx, win_width, win_height)) {
-        fprintf(stderr, "render_init failed\n");
-        client_disconnect(state);
-        return false;
-    }
-
+    state->rctx = *rctx;
     camera_init(&state->cam, win_width, win_height);
 
     state->time_since_last_tick = 0.0;
-    return true;
+    return CLIENT_RUN_OK;
 }
 
 static void client_state_destroy(client_state* state)
@@ -45,7 +47,6 @@ static void client_state_destroy(client_state* state)
 
     game_state_destroy(&state->gs);
     game_state_destroy(&state->prev_gs);
-    render_destroy(&state->rctx);
     client_disconnect(state);
 }
 
@@ -83,15 +84,16 @@ void client_spectate_prev(client_state* state)
     }
 }
 
-bool client_run(const char* hostname, const char* port, const char* nickname, int win_width, int win_height)
+client_run_status client_run(render_context* rctx, const char* hostname, const char* port, const char* nickname, int win_width, int win_height, const char** error_text)
 {
+    client_run_status status;
     client_state state;
-    if (!client_state_init(&state, hostname, port, nickname, win_width, win_height)) {
-        fprintf(stderr, "client_state_init failed\n");
-        return false;
+
+    if ((status = client_state_init(&state, rctx, hostname, port, nickname, win_width, win_height, error_text)) != CLIENT_RUN_OK) {
+        return status;
     }
 
-    bool rc = true;
+    bool rc = CLIENT_RUN_OK;
     bool quit_request = false;
     Uint64 prev_frame = SDL_GetTicks64();
     while (!quit_request) {
@@ -100,13 +102,13 @@ bool client_run(const char* hostname, const char* port, const char* nickname, in
 
         if (!process_input(&state, &quit_request, dt)) {
             fprintf(stderr, "process_input failed\n");
-            rc = false;
+            rc = CLIENT_RUN_ERROR;
             break;
         }
 
         if (!client_receive_packets(&state)) {
             fprintf(stderr, "client_receive_packets failed\n");
-            rc = false;
+            rc = CLIENT_RUN_ERROR;
             break;
         }
 
@@ -118,7 +120,7 @@ bool client_run(const char* hostname, const char* port, const char* nickname, in
 
         if (!render_game(&state.rctx, &state.cam, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
-            rc = false;
+            rc = CLIENT_RUN_ERROR;
             break;
         }
 
