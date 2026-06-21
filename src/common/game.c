@@ -212,6 +212,9 @@ bool game_add_snake(game_state* gs, uint32_t* snake_id, const char nickname[MAX_
 
 snake* game_find_snake(game_state* gs, uint32_t snake_id)
 {
+    if (snake_id == SNAKE_ID_INVALID)
+        return NULL;
+
     for (size_t i = 0; i < gs->snakes_size; i++) {
         snake* s = &gs->snakes[i];
         if (s->id == snake_id) {

@@ -125,7 +125,7 @@ void test_render_game(void)
 
     TEST_ASSERT_TRUE(render_init(&rctx, w, h));
     camera_init(&cam, w, h);
-    TEST_ASSERT_TRUE(render_game(&rctx, &cam, &gs, &prev_gs, 1, 1, 0.0, 0.0));
+    TEST_ASSERT_TRUE(render_game(&rctx, &cam, &gs, &prev_gs, 0, 1, 1, true, 0.0, 0.0));
     poll_events(rctx.renderer);
     render_destroy(&rctx);
 }

@@ -176,7 +176,8 @@ bool menu_run(render_context* rctx, menu_state* state, const char* error_text, b
                         } else if (state->selected_box == 2) {
                             input_box_del_char(&state->nickname);
                         }
-                    } else if (event.key.keysym.sym == SDLK_RETURN) {
+                    } else if (event.key.keysym.sym == SDLK_RETURN ||
+                               event.key.keysym.sym == SDLK_KP_ENTER) {
                         if (!state->hostname.input[0]) {
                             error_text = "The hostname must not be empty";
                         } else if (!state->port.input[0]) {

@@ -75,20 +75,22 @@ bool process_input(client_state* state, bool* quit, double dt)
                 } else if (event.key.keysym.sym == SDLK_ESCAPE) {
                     *quit = true;
                     break;
+                } else if (event.key.keysym.sym == SDLK_h) {
+                    state->controls_visible = !state->controls_visible;
                 }
                 break;
             case SDL_MOUSEWHEEL:
                 if (event.wheel.y > 0)
-                    camera_set_zoom(&state->cam, state->cam.zoom * 1.1, state->rctx.win_width, state->rctx.win_height);
+                    camera_set_zoom(&state->cam, state->cam.zoom * 1.1, state->rctx->win_width, state->rctx->win_height);
                 else if (event.wheel.y < 0)
-                    camera_set_zoom(&state->cam, state->cam.zoom / 1.1, state->rctx.win_width, state->rctx.win_height);
+                    camera_set_zoom(&state->cam, state->cam.zoom / 1.1, state->rctx->win_width, state->rctx->win_height);
 
                 break;
             case SDL_WINDOWEVENT:
                 if (event.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
                     int width = event.window.data1;
                     int height = event.window.data2;
-                    if (!render_resize_window(&state->rctx, width, height)) {
+                    if (!render_resize_window(state->rctx, width, height)) {
                         fprintf(stderr, "render_resize_window failed\n");
                         return false;
                     }

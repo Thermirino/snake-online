@@ -15,11 +15,13 @@ typedef struct {
     uint32_t snake_id;
     char nickname[MAX_NICKNAME_LEN + 1];
     uint32_t spectate_snake_id;
+    size_t max_length;
 
     game_state gs;
     game_state prev_gs;
-    render_context rctx;
+    render_context* rctx;
     camera cam;
+    bool controls_visible;
 
     double time_since_last_tick;
 } client_state;

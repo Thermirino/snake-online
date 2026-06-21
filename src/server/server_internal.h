@@ -18,8 +18,9 @@ typedef enum {
 } client_status;
 
 typedef struct {
-    client_status status;
     int fd;
+    client_status status;
+
     uint32_t snake_id;
     input_queue in_queue;
 } client;

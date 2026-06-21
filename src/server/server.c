@@ -109,7 +109,9 @@ static client* add_client(server_state* state, int clientfd)
     state->clients[state->nclients].fd = clientfd;
     state->clients[state->nclients].status = CLIENT_CONNECTING;
     state->clients[state->nclients].snake_id = SNAKE_ID_INVALID;
+
     state->nclients++;
+
     return &state->clients[state->nclients - 1];
 }
 

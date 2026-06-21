@@ -131,12 +131,18 @@ static bool handle_packet(client_state* state,
             state->prev_gs = state->gs;
             state->gs = new_gs;
 
+            snake* sn = game_find_snake(&state->gs, state->snake_id);
+            if (sn && sn->body.size > state->max_length) {
+                state->max_length = sn->body.size;
+            }
+
             state->time_since_last_tick = 0.0;
 
             break;
         case PT_GAME_OVER:
+            game_delete_snake_by_id(&state->gs, state->snake_id);
             state->snake_id = SNAKE_ID_INVALID;
-            client_spectate_next(state);
+            state->spectate_snake_id = SNAKE_ID_INVALID;
             break;
         case PT_RESPAWN_ACK:
             if (payload_size != sizeof(respawn_ack_payload))

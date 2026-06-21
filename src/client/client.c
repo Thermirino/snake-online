@@ -33,8 +33,10 @@ static client_run_status client_state_init(client_state* state, render_context* 
         return CLIENT_RUN_ERROR;
     }
 
-    state->rctx = *rctx;
+    state->rctx = rctx;
     camera_init(&state->cam, rctx->win_width, rctx->win_height);
+
+    state->controls_visible = true;
 
     state->time_since_last_tick = 0.0;
     return CLIENT_RUN_OK;
@@ -47,6 +49,7 @@ static void client_state_destroy(client_state* state)
 
     game_state_destroy(&state->gs);
     game_state_destroy(&state->prev_gs);
+    state->rctx = NULL;
     client_disconnect(state);
 }
 
@@ -62,6 +65,8 @@ void client_spectate_next(client_state* state)
         }
         cur = (cur + 1) % state->gs.snakes_size;
         state->spectate_snake_id = state->gs.snakes[cur].id;
+    } else {
+        state->spectate_snake_id = SNAKE_ID_INVALID;
     }
 }
 
@@ -118,7 +123,7 @@ client_run_status client_run(render_context* rctx, const char* hostname, const c
         if (interp_factor > 1.5)
             interp_factor = 1.0;
 
-        if (!render_game(&state.rctx, &state.cam, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, dt, interp_factor)) {
+        if (!render_game(state.rctx, &state.cam, &state.gs, &state.prev_gs, state.snake_id, state.spectate_snake_id, state.max_length, state.controls_visible, dt, interp_factor)) {
             fprintf(stderr, "render_game failed\n");
             rc = CLIENT_RUN_ERROR;
             break;

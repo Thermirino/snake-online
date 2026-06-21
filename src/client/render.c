@@ -1,5 +1,3 @@
-#include <SDL_pixels.h>
-#include <SDL_render.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +6,8 @@
 #include "render.h"
 #include "game.h"
 #include "snake.h"
+
+#define max(a, b) ((a) > (b) ? (a) : (b))
 
 static const SDL_Color colors[] = {
     { 255, 255, 255, 255 },
@@ -362,10 +362,8 @@ bool render_resize_window(render_context* rctx, int win_width, int win_height)
     return true;
 }
 
-bool render_free_camera_label(render_context* rctx)
+bool render_top_label(render_context* rctx, const char* text)
 {
-
-    const char* text = "FREE CAMERA";
     int w, h;
     if (TTF_SizeUTF8(rctx->font_large, text, &w, &h) != 0) {
         fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
@@ -401,7 +399,7 @@ bool render_free_camera_label(render_context* rctx)
     return true;
 }
 
-bool render_game(render_context* rctx, camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, uint32_t spectate_snake_id, double dt, double interp_factor)
+bool render_game(render_context* rctx, camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, uint32_t spectate_snake_id, size_t max_snake_length, bool controls_visible, double dt, double interp_factor)
 {
     if (!render_set_color(rctx, rctx->colors.background)) {
         fprintf(stderr, "set_color failed\n");
@@ -412,8 +410,9 @@ bool render_game(render_context* rctx, camera* cam, const game_state* gs, const 
                 SDL_GetError());
     }
 
-    if (cam->mode == CAMERA_FOLLOW)
+    if (cam->mode == CAMERA_FOLLOW) {
         center_camera(cam, gs, prev_gs, spectate_snake_id, dt, interp_factor);
+    }
 
     if (!render_snakes(rctx, cam, gs->snakes, gs->snakes_size, prev_gs->snakes, prev_gs->snakes_size, interp_factor)) {
         fprintf(stderr, "render_snakes failed\n");
@@ -432,18 +431,37 @@ bool render_game(render_context* rctx, camera* cam, const game_state* gs, const 
         return false;
     }
 
+    controls_info_type ci_type = CONTROLS_PLAYING;
     if (cam->mode == CAMERA_FREE) {
-        if (!render_free_camera_label(rctx)) {
-            fprintf(stderr, "render_free_camera_label failed\n");
+        ci_type = CONTROLS_FREE_CAMERA;
+
+        if (!render_top_label(rctx, "FREE CAMERA")) {
+            fprintf(stderr, "render_top_label failed\n");
+            return false;
+        }
+    } else if (snake_id == SNAKE_ID_INVALID &&
+               spectate_snake_id == SNAKE_ID_INVALID) {
+        ci_type = CONTROLS_GAME_OVER;
+    } else if (snake_id == SNAKE_ID_INVALID) {
+        ci_type = CONTROLS_SPECTATING;
+
+        if (!render_top_label(rctx, "SPECTATE")) {
+            fprintf(stderr, "render_top_label failed\n");
             return false;
         }
     }
 
+    if (controls_visible && !render_controls_info(rctx, ci_type)) {
+        fprintf(stderr, "render_controls_info failed\n");
+        return false;
+    }
+
     if (snake_id == SNAKE_ID_INVALID) {
-        if (!render_game_over(rctx)) {
-            fprintf(stderr, "render_game_over failed\n");
-            return false;
-        }
+        if (spectate_snake_id == SNAKE_ID_INVALID)
+            if (!render_game_over(rctx, max_snake_length)) {
+                fprintf(stderr, "render_game_over failed\n");
+                return false;
+            }
     }
 
     SDL_RenderPresent(rctx->renderer);
@@ -454,7 +472,7 @@ bool render_text(render_context* rctx, TTF_Font* font, const char* text,
                  int x, int y, color_name cname)
 {
     SDL_Color color = get_color(cname);
-    SDL_Surface* surface = TTF_RenderUTF8_Blended(font, text, color);
+    SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, text, color, 0);
     if (!surface) {
         fprintf(stderr, "TTF_RenderUTF8_Blended: %s\n", 
                 TTF_GetError());
@@ -479,6 +497,35 @@ bool render_text(render_context* rctx, TTF_Font* font, const char* text,
     }
 
     SDL_DestroyTexture(texture);
+    return true;
+}
+
+bool size_utf8_wrapped(TTF_Font* font, const char* text, int* w, int* h)
+{
+    char* p = strdup(text);
+    if (!p)
+        return false;
+
+    char* token = strtok(p, "\n");
+    int total_width = 0, total_height = 0;
+    int width, height;
+    while (token) {
+        if (TTF_SizeUTF8(font, token, &width, &height) != 0) {
+            fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
+            return false;
+        }
+
+        total_width = max(total_width, width);
+        total_height += height;
+        
+        token = strtok(NULL, "\n");
+    }
+
+    free(p);
+
+    *w = total_width;
+    *h = total_height;
+
     return true;
 }
 
@@ -614,7 +661,7 @@ bool render_leaderboard(render_context* rctx, const game_state* gs)
     return true;
 }
 
-bool render_game_over(render_context* rctx)
+bool render_game_over(render_context* rctx, size_t max_snake_length)
 {
     const char* text = "GAME OVER";
     int w, h;
@@ -622,7 +669,9 @@ bool render_game_over(render_context* rctx)
         fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
         return false;
     }
-    const char* text2 = "Press R to Respawn";
+
+    char text2[40];
+    snprintf(text2, sizeof(text2), "Maximum length: %zu", max_snake_length);
     int w2, h2;
     if (TTF_SizeUTF8(rctx->font_large, text2, &w2, &h2) != 0) {
         fprintf(stderr, "TTF_SizeUTF8: %s\n", TTF_GetError());
@@ -634,9 +683,10 @@ bool render_game_over(render_context* rctx)
 
     // render bg
     SDL_Rect rect;
-    rect.x = rctx->win_width / 2 - w2 / 2 - padding;
+    int max_w = (max(w, w2));
+    rect.x = rctx->win_width / 2 - max_w / 2 - padding;
     rect.y = rctx->win_height / 2 - h / 2 - padding;
-    rect.w = w2 + padding * 2;
+    rect.w = max_w + padding * 2;
     rect.h = h + h2 + padding * 2;
     if (!render_set_colora(rctx, rctx->colors.game_over_bg, alpha)) {
         fprintf(stderr, "set_colora failed\n");
@@ -666,6 +716,7 @@ bool render_game_over(render_context* rctx)
         fprintf(stderr, "render_text failed\n");
         return false;
     }
+    y += h2;
 
     return true;
 }
@@ -700,13 +751,13 @@ void camera_set_zoom(camera* cam, double zoom, int win_width, int win_height)
     camera_resize(cam, win_width, win_height);
 }
 
-static void center_camera(camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t snake_id, double dt, double interp_factor)
+static void center_camera(camera* cam, const game_state* gs, const game_state* prev_gs, uint32_t spectate_snake_id, double dt, double interp_factor)
 {
-    snake* s = game_find_snake((game_state*)gs, snake_id);
+    snake* s = game_find_snake((game_state*)gs, spectate_snake_id);
     if (!s) {
         return;
     }
-    snake* prev_s = game_find_snake((game_state*)prev_gs, snake_id);
+    snake* prev_s = game_find_snake((game_state*)prev_gs, spectate_snake_id);
     if (!prev_s)
         prev_s = s;
 
@@ -743,4 +794,76 @@ static void center_camera(camera* cam, const game_state* gs, const game_state* p
 
     cam->x += (target_x - cam->x) * FOLLOW_CAMERA_SPEED * dt;
     cam->y += (target_y - cam->y) * FOLLOW_CAMERA_SPEED * dt;
+}
+
+bool render_controls_info(render_context* rctx, controls_info_type type)
+{
+    const char* text;
+    switch (type) {
+        case CONTROLS_PLAYING:
+            text = "Controls:\n"
+                "h - hide this menu\n"
+                "arrows - move\n"
+                "c - free camera";
+            break;
+        case CONTROLS_SPECTATING:
+            text = "Controls:\n"
+                "h - hide this menu\n"
+                "left/right - spectate\n"
+                "mouse wheel - zoom\n"
+                "c - free camera\n"
+                "r - respawn";
+            break;
+        case CONTROLS_FREE_CAMERA:
+            text = "Controls:\n"
+                "h - hide this menu\n"
+                "arrows - move camera\n"
+                "mouse wheel - zoom\n"
+                "c - follow camera";
+            break;
+        case CONTROLS_GAME_OVER:
+            text = "Controls:\n"
+                "h - hide this menu\n"
+                "left/right - spectate\n"
+                "c - free camera\n"
+                "r - respawn";
+            break;
+        default:
+            return false;
+    }
+
+    int w, h;
+    if (!size_utf8_wrapped(rctx->font_large, text, &w, &h)) {
+        fprintf(stderr, "size_utf8_wrapped failed\n");
+        return false;
+    }
+
+    int margin = 10;
+    int padding = 20;
+    int alpha = 220;
+
+    // render bg
+    SDL_Rect rect;
+    rect.x = margin;
+    rect.y = margin;
+    rect.w = w + padding * 2;
+    rect.h = h + padding * 2;
+    if (!render_set_colora(rctx, rctx->colors.game_over_bg, alpha)) {
+        fprintf(stderr, "set_colora failed\n");
+        return false;
+    }
+    if (SDL_RenderFillRect(rctx->renderer, &rect) != 0) {
+        fprintf(stderr, "SDL_RenderFillRect failed\n");
+        return false;
+    }
+
+    // render text
+    int x = rect.x + padding;
+    int y = rect.y + padding;
+    if (!render_text(rctx, rctx->font_large, text, x, y, rctx->colors.game_over_fg)) {
+        fprintf(stderr, "render_text failed\n");
+        return false;
+    }
+    y += h;
+    return true;
 }
