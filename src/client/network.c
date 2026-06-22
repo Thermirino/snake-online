@@ -148,6 +148,8 @@ static bool handle_packet(client_state* state,
             if (payload_size != sizeof(respawn_ack_payload))
                 return false;
 
+            state->max_length = 0;
+
             respawn_ack_payload* rpayload = payload;
             state->snake_id = be32toh(rpayload->snake_id);
             state->spectate_snake_id = state->snake_id;
