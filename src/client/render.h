@@ -31,7 +31,7 @@ typedef enum {
 } camera_mode;
 
 typedef struct {
-    SDL_Rect head;
+    SDL_Rect head[3];
     SDL_Rect tail;
     SDL_Rect tail_half;
     SDL_Rect straight;

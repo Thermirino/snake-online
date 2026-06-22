@@ -1,7 +1,3 @@
-#include <SDL_error.h>
-#include <SDL_pixels.h>
-#include <SDL_rect.h>
-#include <SDL_render.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -109,7 +105,9 @@ bool render_init(render_context* rctx, int win_width, int win_height)
         fprintf(stderr, "IMG_LoadTexture failed: %s\n", IMG_GetError());
         goto failed;
     }
-    rctx->snake.head = (SDL_Rect){ 0, 84, 42, 42 };
+    rctx->snake.head[0] = (SDL_Rect){ 0, 0, 42, 42 };
+    rctx->snake.head[1] = (SDL_Rect){ 0, 42, 42, 42 };
+    rctx->snake.head[2] = (SDL_Rect){ 0, 84, 42, 42 };
     rctx->snake.tail = (SDL_Rect){ 42, 84, 42, 42 };
     rctx->snake.tail_half = (SDL_Rect){ 42, 105, 42, 42 };
     rctx->snake.straight = (SDL_Rect){ 84, 84, 42, 42 };
@@ -378,21 +376,27 @@ static snake_body_type snake_get_body_type(const snake* s, size_t index, double*
     return SNAKE_BODY_UNKNOWN;
 }
 
-bool render_snake_body(render_context* rctx, SDL_FRect* dst, snake_body_type type, double angle)
+bool render_snake_body(render_context* rctx, SDL_FRect* dst, snake_body_type type, double angle, double interp_factor)
 {
     SDL_FRect drect = *dst;
     SDL_Rect srect;
 
     switch (type) {
         case SNAKE_BODY_HEAD:
-            srect = rctx->snake.head;
-            break;
+            {
+                int i;
+                if (interp_factor < 1.0 / 3) {
+                    i = 0;
+                } else if (interp_factor < 2.0 / 3) {
+                    i = 1;
+                } else {
+                    i = 2;
+                }
+                srect = rctx->snake.head[i];
+                break;
+            }
         case SNAKE_BODY_TAIL:
             srect = rctx->snake.tail;
-            srect.x = 42;
-            srect.y = 84;
-            srect.w = 42;
-            srect.h = 42;
             break;
         case SNAKE_BODY_TAIL_HALF:
             srect = rctx->snake.tail_half;
@@ -502,7 +506,7 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
             }
         }
 
-        if (!render_snake_body(rctx, &rect, type, angle)) {
+        if (!render_snake_body(rctx, &rect, type, angle, interp_factor)) {
             fprintf(stderr, "render_snake_body failed\n");
             return false;
         }
@@ -531,7 +535,7 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
             rect.x = (target_x - cam->x) * scaled_cell_size;
             rect.y = (target_y - cam->y) * scaled_cell_size;
 
-            if (!render_snake_body(rctx, &rect, type, angle)) {
+            if (!render_snake_body(rctx, &rect, type, angle, interp_factor)) {
                 fprintf(stderr, "render_snake_body failed\n");
                 return false;
             }
