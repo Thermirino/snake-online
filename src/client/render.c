@@ -1,8 +1,13 @@
+#include <SDL_error.h>
+#include <SDL_pixels.h>
+#include <SDL_rect.h>
+#include <SDL_render.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <SDL_image.h>
 #include "render.h"
 #include "game.h"
 #include "snake.h"
@@ -44,6 +49,7 @@ bool render_init(render_context* rctx, int win_width, int win_height)
     }
     rctx->window = NULL;
     rctx->renderer = NULL;
+    rctx->snake.texture = NULL;
     rctx->font_small = NULL;
     rctx->font_small_bold = NULL;
     rctx->font_medium = NULL;
@@ -92,6 +98,29 @@ bool render_init(render_context* rctx, int win_width, int win_height)
         fprintf(stderr, "SDL_CreateRenderer: %s\n", SDL_GetError());
         goto failed;
     }
+
+    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
+        fprintf(stderr, "IMG_Init failed: %s\n", IMG_GetError());
+        goto failed;
+    }
+
+    rctx->snake.texture = IMG_LoadTexture(rctx->renderer, "assets/sprites/snake.png");
+    if (!rctx->snake.texture) {
+        fprintf(stderr, "IMG_LoadTexture failed: %s\n", IMG_GetError());
+        goto failed;
+    }
+    rctx->snake.head = (SDL_Rect){ 0, 84, 42, 42 };
+    rctx->snake.tail = (SDL_Rect){ 42, 84, 42, 42 };
+    rctx->snake.tail_half = (SDL_Rect){ 42, 105, 42, 42 };
+    rctx->snake.straight = (SDL_Rect){ 84, 84, 42, 42 };
+    rctx->snake.corner = (SDL_Rect){ 42, 0, 42, 42 };
+
+    rctx->food.texture = IMG_LoadTexture(rctx->renderer, "assets/sprites/food.png");
+    if (!rctx->food.texture) {
+        fprintf(stderr, "IMG_LoadTexture failed: %s\n", IMG_GetError());
+        goto failed;
+    }
+    rctx->food.red_apple = (SDL_Rect){ 0, 32, 32, 32 };
 
     if (TTF_Init() == -1) {
         fprintf(stderr, "TTF_Init failed: %s\n", TTF_GetError());
@@ -170,6 +199,9 @@ failed:
     TTF_CloseFont(rctx->font_large);
     TTF_CloseFont(rctx->font_large_bold);
     TTF_Quit();
+    SDL_DestroyTexture(rctx->food.texture);
+    SDL_DestroyTexture(rctx->snake.texture);
+    IMG_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
     SDL_Quit();
@@ -189,6 +221,9 @@ void render_destroy(render_context* rctx)
     TTF_CloseFont(rctx->font_large);
     TTF_CloseFont(rctx->font_large_bold);
     TTF_Quit();
+    SDL_DestroyTexture(rctx->food.texture);
+    SDL_DestroyTexture(rctx->snake.texture);
+    IMG_Quit();
     SDL_DestroyRenderer(rctx->renderer);
     SDL_DestroyWindow(rctx->window);
     SDL_Quit();
@@ -254,30 +289,195 @@ bool render_grid(render_context* rctx, camera* cam, const board* brd)
     return true;
 }
 
+static snake_body_type snake_get_body_type(const snake* s, size_t index, double* angle)
+{
+    if (!s)
+        return SNAKE_BODY_UNKNOWN;
+
+    point* prev = index > 0 ? &s->body.points[index - 1] : NULL;
+    point* curr = &s->body.points[index];
+    point* next = s->body.size > index + 1 ? &s->body.points[index + 1] : NULL;
+
+    if (!prev) {
+        // head
+        switch (s->dir) {
+            case DIR_UP:
+                *angle = 180;
+                break;
+            case DIR_DOWN:
+                *angle = 0;
+                break;
+            case DIR_LEFT:
+                *angle = 90;
+                break;
+            case DIR_RIGHT:
+                *angle = 270;
+                break;
+            default:
+                *angle = 0;
+                break;
+        }
+        return SNAKE_BODY_HEAD;
+    }
+    else if (!next) {
+        // tail
+        int dx = prev->x - curr->x;
+        int dy = prev->y - curr->y;
+
+        if (dx == 0 && dy == 1)
+            *angle = 180;
+        else if (dx == 0 && dy == -1)
+            *angle = 0;
+        else if (dx == 1 && dy == 0)
+            *angle = 90;
+        else /* if (dx == -1 && dy == 0) */
+            *angle = 270;
+        return SNAKE_BODY_TAIL;
+    }
+
+    int dx1 = prev->x - curr->x;
+    int dy1 = prev->y - curr->y;
+
+    int dx2 = next->x - curr->x;
+    int dy2 = next->y - curr->y;
+
+    if (dy1 == 0 && dy2 == 0) {
+        *angle = 90;
+        return SNAKE_BODY_STRAIGHT;
+    }
+    
+    if (dx1 == 0 && dx2 == 0) {
+        *angle = 0;
+        return SNAKE_BODY_STRAIGHT;
+    }
+
+    if ((dx1 == 0 && dy1 == -1 && dx2 == 1 && dy2 == 0) ||
+        (dx1 == 1 && dy1 == 0 && dx2 == 0 && dy2 == -1)) {
+        *angle = -90;
+        return SNAKE_BODY_CORNER;
+    }
+
+    if ((dx1 == 0 && dy1 == 1 && dx2 == 1 && dy2 == 0) ||
+        (dx2 == 0 && dy2 == 1 && dx1 == 1 && dy1 == 0)) {
+        *angle = 0;
+        return SNAKE_BODY_CORNER;
+    }
+
+    if ((dx1 == 0 && dy1 == 1 && dx2 == -1 && dy2 == 0) ||
+        (dx2 == 0 && dy2 == 1 && dx1 == -1 && dy1 == 0)) {
+        *angle = 90;
+        return SNAKE_BODY_CORNER;
+    }
+
+    if ((dx1 == 0 && dy1 == -1 && dx2 == -1 && dy2 == 0) ||
+        (dx2 == 0 && dy2 == -1 && dx1 == -1 && dy1 == 0)) {
+        *angle = 180;
+        return SNAKE_BODY_CORNER;
+    }
+
+    return SNAKE_BODY_UNKNOWN;
+}
+
+bool render_snake_body(render_context* rctx, SDL_FRect* dst, snake_body_type type, double angle)
+{
+    SDL_FRect drect = *dst;
+    SDL_Rect srect;
+
+    switch (type) {
+        case SNAKE_BODY_HEAD:
+            srect = rctx->snake.head;
+            break;
+        case SNAKE_BODY_TAIL:
+            srect = rctx->snake.tail;
+            srect.x = 42;
+            srect.y = 84;
+            srect.w = 42;
+            srect.h = 42;
+            break;
+        case SNAKE_BODY_TAIL_HALF:
+            srect = rctx->snake.tail_half;
+
+            if (angle == 0) {
+                drect.y += drect.h;
+            } else if (angle == 90) {
+                drect.y += drect.h / 2;
+                drect.x -= drect.h / 2;
+            } else if (angle == 270) {
+                drect.y += drect.h / 2;
+                drect.x += drect.h / 2;
+            }
+            break;
+        case SNAKE_BODY_STRAIGHT:
+            srect = rctx->snake.straight;
+            break;
+        case SNAKE_BODY_CORNER:
+            srect = rctx->snake.corner;
+            break;
+        default:
+            fprintf(stderr, "Unknown snake_body_type: %d\n", type);
+            return false;
+    }
+
+    if (SDL_RenderCopyExF(rctx->renderer, rctx->snake.texture, &srect, &drect, angle, NULL, SDL_FLIP_NONE) != 0) {
+        fprintf(stderr, "SDL_RenderCopyExF: %s\n", SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
 bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake* prev_s, double interp_factor)
 {
     if (!rctx || !s)
         return false;
 
-    if (!render_set_color(rctx, s->color)) {
-        fprintf(stderr, "set_color failed\n");
+    SDL_Color color = get_color(s->color);
+    if (SDL_SetTextureColorMod(rctx->snake.texture, color.r, color.g, color.b) != 0) {
+        fprintf(stderr, "SDL_SetTextureColorMod: %s\n", SDL_GetError());
         return false;
     }
 
     double scaled_cell_size = cam->cell_size * cam->zoom;
-    SDL_FRect rect = { .x = 0, .y = 0,
-        .w = scaled_cell_size, .h = scaled_cell_size };
+    SDL_FRect rect;
 
-    for (size_t i = 0; i < s->body.size; i++) {
+    for (size_t i = s->body.size; i-- > 0;) {
+        rect.w = scaled_cell_size;
+        rect.h = scaled_cell_size;
+
+        double angle;
+        snake_body_type type = snake_get_body_type(s, i, &angle);
+        if (type == SNAKE_BODY_UNKNOWN) {
+            fprintf(stderr, "snake_get_body_type failed\n");
+            return false;
+        }
+
         double target_x;
         double target_y;
-
-        if (prev_s && i < prev_s->body.size) {
+        if (i == 0 && prev_s && prev_s->body.size > 0) {
+            // head
             point* origin = &prev_s->body.points[i];
             point* dest = &s->body.points[i];
 
             target_x = origin->x + (dest->x - origin->x) * interp_factor;
             target_y = origin->y + (dest->y - origin->y) * interp_factor;
+        } else if (i == s->body.size - 1 && prev_s && prev_s->body.size > 1) {
+            // tail
+            type = snake_get_body_type(prev_s, prev_s->body.size - 1, &angle);
+
+            point* origin = &prev_s->body.points[prev_s->body.size - 1];
+            point* dest = &s->body.points[i];
+
+            double a;
+            if (snake_get_body_type(prev_s, i - 1, &a) == SNAKE_BODY_CORNER &&
+                interp_factor > 0.5) {
+                type = SNAKE_BODY_TAIL_HALF;
+                rect.h /= 2;
+
+                target_x = origin->x + (dest->x - origin->x) * interp_factor;
+                target_y = origin->y + (dest->y - origin->y) * interp_factor;
+            } else {
+                target_x = origin->x + (dest->x - origin->x) * interp_factor;
+                target_y = origin->y + (dest->y - origin->y) * interp_factor;
+            }
         } else {
             point* p = &s->body.points[i];
             target_x = p->x;
@@ -302,12 +502,42 @@ bool render_snake(render_context* rctx, camera* cam, const snake* s, const snake
             }
         }
 
-        if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
-            fprintf(stderr, "SDL_RenderFillRect: %s\n",
-                    SDL_GetError());
+        if (!render_snake_body(rctx, &rect, type, angle)) {
+            fprintf(stderr, "render_snake_body failed\n");
             return false;
         }
     }
+
+    // render the second-to-last part of the body
+    // in the previous position
+    if (prev_s && prev_s->body.size > 2) {
+        size_t i = prev_s->body.size - 1;
+        double angle;
+        snake_body_type type = snake_get_body_type(prev_s, i - 1, &angle);
+
+        if (type == SNAKE_BODY_UNKNOWN) {
+            fprintf(stderr, "snake_get_body_type failed\n");
+            return false;
+        }
+
+        if ((type != SNAKE_BODY_STRAIGHT || interp_factor < 0.95)) {
+            double target_x;
+            double target_y;
+
+            point* p = &s->body.points[i];
+            target_x = p->x;
+            target_y = p->y;
+
+            rect.x = (target_x - cam->x) * scaled_cell_size;
+            rect.y = (target_y - cam->y) * scaled_cell_size;
+
+            if (!render_snake_body(rctx, &rect, type, angle)) {
+                fprintf(stderr, "render_snake_body failed\n");
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -334,11 +564,6 @@ bool render_snakes(render_context* rctx, camera* cam, const snake* snakes, size_
 
 bool render_food(render_context* rctx, camera* cam, point* food, size_t size)
 {
-    if (!render_set_color(rctx, rctx->colors.food)) {
-        fprintf(stderr, "set_color failed\n");
-        return false;
-    }
-
     double scaled_cell_size = cam->cell_size * cam->zoom;
     SDL_FRect rect = { .x = 0, .y = 0,
                       .w = scaled_cell_size, .h = scaled_cell_size };
@@ -346,9 +571,8 @@ bool render_food(render_context* rctx, camera* cam, point* food, size_t size)
         rect.x = (food[i].x - cam->x) * scaled_cell_size;
         rect.y = (food[i].y - cam->y) * scaled_cell_size;
 
-        if (SDL_RenderFillRectF(rctx->renderer, &rect) < 0) {
-            fprintf(stderr, "SDL_RenderFillRect: %s\n",
-                    SDL_GetError());
+        if (SDL_RenderCopyF(rctx->renderer, rctx->food.texture, &rctx->food.red_apple, &rect) != 0) {
+            fprintf(stderr, "SDL_RenderCopyF: %s\n", SDL_GetError());
             return false;
         }
     }

@@ -63,7 +63,7 @@ bool process_input(client_state* state, bool* quit, double dt)
                            state->snake_id == SNAKE_ID_INVALID) {
 
                     respawn_payload resp_payload = { 0 };
-                    strncpy(resp_payload.nickname, state->nickname, MAX_NICKNAME_LEN);
+                    strncpy(resp_payload.nickname, state->nickname, MAX_NICKNAME_LEN + 1);
 
                     if (!send_packet(state->sockfd,
                                      PT_RESPAWN,

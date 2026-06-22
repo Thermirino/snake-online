@@ -95,6 +95,9 @@ else()
     find_package(SDL2 CONFIG REQUIRED)
 endif()
 
+# SDL2_image
+find_package(SDL2_image CONFIG REQUIRED)
+
 # SDL2_ttf
 find_package(SDL2_ttf CONFIG REQUIRED)
 
@@ -122,6 +125,7 @@ target_include_directories(snake_client
                                 PRIVATE src/client)
 target_link_libraries(snake_client PUBLIC 
                                         SDL2::SDL2 
+                                        SDL2_image::SDL2_image
                                         SDL2_ttf::SDL2_ttf
                                         snake_common)
 

@@ -229,7 +229,7 @@ static bool handle_packet(server_state* state,
 
             uint32_t snake_id;
             if (!game_add_snake(&state->gs, &snake_id, conn_payload->nickname)) {
-                fprintf(stderr, "game_add_player_snake() failed\n");
+                fprintf(stderr, "game_add_snake failed\n");
                 return false;
             }
 
@@ -259,7 +259,7 @@ static bool handle_packet(server_state* state,
             respawn_payload* resp_payload = payload;
 
             if (!game_add_snake(&state->gs, &snake_id, resp_payload->nickname)) {
-                fprintf(stderr, "game_add_player_snake() failed\n");
+                fprintf(stderr, "game_add_snake failed\n");
                 return false;
             }
 

@@ -30,6 +30,22 @@ typedef enum {
     CAMERA_FREE
 } camera_mode;
 
+typedef struct {
+    SDL_Rect head;
+    SDL_Rect tail;
+    SDL_Rect tail_half;
+    SDL_Rect straight;
+    SDL_Rect corner;
+
+    SDL_Texture* texture;
+} snake_spritesheet;
+
+typedef struct {
+    SDL_Rect red_apple;
+
+    SDL_Texture* texture;
+} food_spritesheet;
+
 typedef struct render_context {
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -43,6 +59,8 @@ typedef struct render_context {
     TTF_Font* font_large;
     TTF_Font* font_large_bold;
 
+    snake_spritesheet snake;
+    food_spritesheet food;
 
     int win_width;              // in pixels
     int win_height;             // in pixels
@@ -65,6 +83,15 @@ typedef enum {
     CONTROLS_GAME_OVER,
     CONTROLS_FREE_CAMERA
 } controls_info_type;
+
+typedef enum {
+    SNAKE_BODY_HEAD,
+    SNAKE_BODY_CORNER,
+    SNAKE_BODY_STRAIGHT,
+    SNAKE_BODY_TAIL,
+    SNAKE_BODY_TAIL_HALF,
+    SNAKE_BODY_UNKNOWN
+} snake_body_type;
 
 bool render_init(render_context* rctx, int win_width, int win_height);
 void render_destroy(render_context* rctx);
