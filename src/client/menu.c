@@ -204,6 +204,10 @@ bool menu_run(render_context* rctx, menu_state* state, const char* error_text, b
             }
         }
 
+        if (!render_set_colora(rctx, WHITE, 200)) {
+            fprintf(stderr, "set_colora failed\n");
+            return false;
+        }
         SDL_RenderClear(rctx->renderer);
 
         const char* text = "Snake Online";
@@ -225,23 +229,41 @@ bool menu_run(render_context* rctx, menu_state* state, const char* error_text, b
             rc = false;
             break;
         }
+
+        // bg
+        SDL_Rect rect;
+        rect.x = rctx->win_width / 5 - text_w;
+        rect.y = rctx->win_height / 5 - text_h / 2;
+        rect.w = rctx->win_width - rect.x - rect.x;
+        rect.h = text_h * 5;
+        if (!render_set_colora(rctx, DARK_BLUE, 200)) {
+            fprintf(stderr, "set_colora failed\n");
+            return false;
+        }
+        if (SDL_RenderFillRect(rctx->renderer, &rect) != 0) {
+            fprintf(stderr, "SDL_RenderFillRect failed\n");
+            return false;
+        }
+
+        // fg
+        color_name fg_color = WHITE;
         x = rctx->win_width / 5;
         y = rctx->win_height / 5;
-        if (!menu_render_input_box(rctx, rctx->font_medium, "Hostname: ", &state->hostname, x, y, BLACK, state->selected_box == 0)) {
+        if (!menu_render_input_box(rctx, rctx->font_medium, "Hostname: ", &state->hostname, x, y, fg_color, state->selected_box == 0)) {
             fprintf(stderr, "menu_render_input_box failed\n");
             rc = false;
             break;
         }
         y += text_h;
 
-        if (!menu_render_input_box(rctx, rctx->font_medium, "Port: ", &state->port, x, y, BLACK, state->selected_box == 1)) {
+        if (!menu_render_input_box(rctx, rctx->font_medium, "Port: ", &state->port, x, y, fg_color, state->selected_box == 1)) {
             fprintf(stderr, "menu_render_input_box failed\n");
             rc = false;
             break;
         }
         y += text_h;
         
-        if (!menu_render_input_box(rctx, rctx->font_medium, "Nickname: ", &state->nickname, x, y, BLACK, state->selected_box == 2)) {
+        if (!menu_render_input_box(rctx, rctx->font_medium, "Nickname: ", &state->nickname, x, y, fg_color, state->selected_box == 2)) {
             fprintf(stderr, "menu_render_input_box failed\n");
             rc = false;
             break;
@@ -255,7 +277,7 @@ bool menu_run(render_context* rctx, menu_state* state, const char* error_text, b
             break;
         }
         x = rctx->win_width / 2 - text_w / 2;
-        if (!render_text(rctx, rctx->font_large, text, x, y, BLACK)) {
+        if (!render_text(rctx, rctx->font_large, text, x, y, fg_color)) {
             fprintf(stderr, "render_text failed\n");
             rc = false;
             break;
