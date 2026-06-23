@@ -22,8 +22,8 @@ int main(int argc, char* argv[])
     if (argc >= 4)
         nickname = argv[3];
 
-    int win_width = 1024;
-    int win_height = 512;
+    int win_width = 1920;
+    int win_height = 1080;
 
     render_context rctx;
     if (!render_init(&rctx, win_width, win_height)) {
