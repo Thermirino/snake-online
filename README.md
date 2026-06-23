@@ -1,5 +1,6 @@
 # Snake Online
 A multiplayer snake game written in C using SDL2.
+![screenshot](./assets/demo.png)
 
 ## Dependencies
 - C Compiler
