@@ -642,16 +642,16 @@ bool render_game(render_context* rctx, camera* cam, const game_state* gs, const 
         center_camera(cam, gs, prev_gs, spectate_snake_id, dt, interp_factor);
     }
 
+    if (!render_grid(rctx, cam, &gs->brd)) {
+        fprintf(stderr, "render_grid failed\n");
+        return false;
+    }
     if (!render_snakes(rctx, cam, gs->snakes, gs->snakes_size, prev_gs->snakes, prev_gs->snakes_size, interp_factor)) {
         fprintf(stderr, "render_snakes failed\n");
         return false;
     }
     if (!render_food(rctx, cam, gs->food, gs->food_size)) {
         fprintf(stderr, "render_food failed\n");
-        return false;
-    }
-    if (!render_grid(rctx, cam, &gs->brd)) {
-        fprintf(stderr, "render_grid failed\n");
         return false;
     }
     if (!render_leaderboard(rctx, gs)) {
