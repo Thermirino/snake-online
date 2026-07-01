@@ -32,6 +32,7 @@ static client_run_status client_state_init(client_state* state, render_context* 
         fprintf(stderr, "game_state_init failed\n");
         return CLIENT_RUN_ERROR;
     }
+    state->max_length = 0;
 
     state->rctx = rctx;
     camera_init(&state->cam, rctx->win_width, rctx->win_height);
