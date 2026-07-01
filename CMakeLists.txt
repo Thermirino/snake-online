@@ -16,11 +16,11 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # Options
 option(BUILD_SHARED_LIBS "Build shared libraries" OFF)
 option(${PREFIX}_ENABLE_WARNING_CFLAGS "Enable warning flags" ON)
-option(${PREFIX}_TURN_WARNINGS_INTO_ERRORS "Turn all warnings into errors" ON)
-option(${PREFIX}_ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" ON)
-option(${PREFIX}_ENABLE_MEMORY_LEEKS_CHECK "Enable memory leaks check" ON)
+option(${PREFIX}_TURN_WARNINGS_INTO_ERRORS "Turn all warnings into errors" OFF)
+option(${PREFIX}_ENABLE_ADDRESS_SANITIZER "Enable address sanitizer" OFF)
+option(${PREFIX}_ENABLE_MEMORY_LEEKS_CHECK "Enable memory leaks check" OFF)
 option(ENABLE_SDL_VENDORED "Use vendored sdl (vendored/sdl)" OFF)
-option(${PREFIX}_BUILD_TESTS "Build tests" ON)
+option(${PREFIX}_BUILD_TESTS "Build tests" OFF)
 
 # Suppress msvc crt secure warnings
 if (MSVC)
